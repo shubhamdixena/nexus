@@ -3,6 +3,22 @@
 
 const BASE_URL = 'http://localhost:3000';
 
+// Track test results
+let hasErrors = false;
+let totalTests = 0;
+let passedTests = 0;
+
+function logTestResult(testName, success, message) {
+  totalTests++;
+  if (success) {
+    passedTests++;
+    console.log(`✅ ${testName}: ${message}`);
+  } else {
+    hasErrors = true;
+    console.log(`❌ ${testName}: ${message}`);
+  }
+}
+
 // Mock session data for testing (you'll need to replace with actual session)
 const testProfileData = {
   personal: {
@@ -64,15 +80,15 @@ async function testProfileCompletion() {
     console.log('📤 Response Body:', JSON.stringify(completeResult, null, 2));
     
     if (completeResponse.status === 401) {
-      console.log('⚠️  Expected: Need authentication to complete profile\n');
+      logTestResult('POST /api/profile/complete', true, 'Expected: Need authentication to complete profile');
     } else if (completeResponse.status === 200) {
-      console.log('✅ Success: Profile completed successfully\n');
+      logTestResult('POST /api/profile/complete', true, 'Success: Profile completed successfully');
     } else {
-      console.log('❌ Error: Unexpected response\n');
+      logTestResult('POST /api/profile/complete', false, 'Unexpected response status');
     }
     
     // Test 2: GET - Check Completion Status
-    console.log('2️⃣ Testing GET /api/profile/complete');
+    console.log('\n2️⃣ Testing GET /api/profile/complete');
     
     const statusResponse = await fetch(`${BASE_URL}/api/profile/complete`, {
       method: 'GET',
@@ -86,13 +102,15 @@ async function testProfileCompletion() {
     console.log('📤 Response Body:', JSON.stringify(statusResult, null, 2));
     
     if (statusResponse.status === 401) {
-      console.log('⚠️  Expected: Need authentication to check status\n');
+      logTestResult('GET /api/profile/complete', true, 'Expected: Need authentication to check status');
     } else if (statusResponse.status === 200) {
-      console.log('✅ Success: Got completion status\n');
+      logTestResult('GET /api/profile/complete', true, 'Success: Got completion status');
+    } else {
+      logTestResult('GET /api/profile/complete', false, 'Unexpected response status');
     }
     
     // Test 3: Validation Test - Invalid Data
-    console.log('3️⃣ Testing validation with invalid data');
+    console.log('\n3️⃣ Testing validation with invalid data');
     
     const invalidData = {
       personal: {
@@ -136,13 +154,13 @@ async function testProfileCompletion() {
     console.log('📤 Response Body:', JSON.stringify(validationResult, null, 2));
     
     if (validationResponse.status === 400) {
-      console.log('✅ Success: Validation errors caught correctly\n');
+      logTestResult('Validation Test', true, 'Success: Validation errors caught correctly');
     } else {
-      console.log('❌ Error: Expected validation error\n');
+      logTestResult('Validation Test', false, 'Expected validation error');
     }
     
     // Test 4: Test other profile endpoints
-    console.log('4️⃣ Testing GET /api/profile');
+    console.log('\n4️⃣ Testing GET /api/profile');
     
     const profileResponse = await fetch(`${BASE_URL}/api/profile`, {
       method: 'GET',
@@ -155,8 +173,14 @@ async function testProfileCompletion() {
     console.log('📤 Response Status:', profileResponse.status);
     console.log('📤 Response Body:', JSON.stringify(profileResult, null, 2));
     
+    if (profileResponse.status === 401 || profileResponse.status === 200) {
+      logTestResult('GET /api/profile', true, 'Response as expected');
+    } else {
+      logTestResult('GET /api/profile', false, 'Unexpected response status');
+    }
+    
     // Test 5: Test PATCH endpoint
-    console.log('5️⃣ Testing PATCH /api/profile');
+    console.log('\n5️⃣ Testing PATCH /api/profile');
     
     const patchData = {
       first_name: "Johnny",
@@ -175,18 +199,33 @@ async function testProfileCompletion() {
     console.log('📤 Response Status:', patchResponse.status);
     console.log('📤 Response Body:', JSON.stringify(patchResult, null, 2));
     
+    if (patchResponse.status === 401 || patchResponse.status === 200) {
+      logTestResult('PATCH /api/profile', true, 'Response as expected');
+    } else {
+      logTestResult('PATCH /api/profile', false, 'Unexpected response status');
+    }
+    
+    // Print final results
     console.log('\n🎯 Test Summary:');
-    console.log('✅ API endpoints are responding correctly');
-    console.log('✅ Validation schemas are working');
-    console.log('✅ Error handling is implemented');
-    console.log('⚠️  Authentication required for actual profile operations');
-    console.log('\n📝 Next Steps:');
-    console.log('1. Test with actual user session/authentication');
-    console.log('2. Verify database operations in Supabase dashboard');
-    console.log('3. Test the frontend profile setup form');
+    console.log(`📊 Total Tests: ${totalTests}`);
+    console.log(`✅ Passed: ${passedTests}`);
+    console.log(`❌ Failed: ${totalTests - passedTests}`);
+    
+    if (hasErrors) {
+      console.log('\n❌ Some tests failed!');
+      process.exit(1);
+    } else {
+      console.log('\n✅ All tests passed!');
+      console.log('📝 Next Steps:');
+      console.log('1. Test with actual user session/authentication');
+      console.log('2. Verify database operations in Supabase dashboard');
+      console.log('3. Test the frontend profile setup form');
+      process.exit(0);
+    }
     
   } catch (error) {
-    console.error('❌ Test failed with error:', error.message);
+    console.error('❌ Test suite failed with error:', error.message);
+    process.exit(1);
   }
 }
 

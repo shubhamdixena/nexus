@@ -1,15 +1,41 @@
 const { createClient } = require('@supabase/supabase-js');
 
+// Track test results
+let hasErrors = false;
+let totalTests = 0;
+let passedTests = 0;
+
+function logTestResult(testName, success, message) {
+    totalTests++;
+    if (success) {
+        passedTests++;
+        console.log(`✅ ${testName}: ${message}`);
+    } else {
+        hasErrors = true;
+        console.log(`❌ ${testName}: ${message}`);
+    }
+}
+
 // Test Supabase MCP Server Configuration
 async function testSupabaseMCP() {
     console.log('🔍 Testing Supabase MCP Server Configuration...\n');
     
     // Check environment variables
     console.log('📋 Environment Variables:');
-    console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ SET' : '❌ NOT SET');
-    console.log('SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ SET' : '❌ NOT SET');
+    const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const hasKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    console.log('SUPABASE_URL:', hasUrl ? '✅ SET' : '❌ NOT SET');
+    console.log('SUPABASE_ANON_KEY:', hasKey ? '✅ SET' : '❌ NOT SET');
     console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 40) + '...');
     console.log('Key (first 20 chars):', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20) + '...\n');
+    
+    logTestResult('Environment Variables', hasUrl && hasKey, hasUrl && hasKey ? 'All required env vars set' : 'Missing required environment variables');
+    
+    if (!hasUrl || !hasKey) {
+        console.log('\n❌ Cannot proceed without environment variables');
+        process.exit(1);
+    }
     
     // Test Supabase Client Creation
     try {
@@ -19,6 +45,7 @@ async function testSupabaseMCP() {
         );
         
         console.log('✅ Supabase client created successfully\n');
+        logTestResult('Client Creation', true, 'Supabase client created successfully');
         
         // Test basic connection
         console.log('🔗 Testing database connection...');
@@ -32,9 +59,11 @@ async function testSupabaseMCP() {
             console.log('Error message:', error.message);
             console.log('Error details:', error.details);
             console.log('Error hint:', error.hint);
+            logTestResult('Database Connection', false, `Connection failed: ${error.message}`);
         } else {
             console.log('✅ Database connection successful!');
             console.log('Universities table accessible');
+            logTestResult('Database Connection', true, 'Universities table accessible');
         }
         
         // Test auth connection
@@ -43,9 +72,11 @@ async function testSupabaseMCP() {
         
         if (authError) {
             console.log('❌ Auth connection failed:', authError.message);
+            logTestResult('Auth Connection', false, `Auth failed: ${authError.message}`);
         } else {
             console.log('✅ Auth connection successful');
             console.log('Session exists:', !!authData.session);
+            logTestResult('Auth Connection', true, 'Auth connection working');
         }
         
         // Test if tables exist
@@ -60,20 +91,42 @@ async function testSupabaseMCP() {
                     
                 if (error) {
                     console.log(`❌ Table '${table}':`, error.message);
+                    logTestResult(`Table Access: ${table}`, false, error.message);
                 } else {
                     console.log(`✅ Table '${table}': accessible`);
+                    logTestResult(`Table Access: ${table}`, true, 'Table accessible');
                 }
             } catch (err) {
                 console.log(`❌ Table '${table}':`, err.message);
+                logTestResult(`Table Access: ${table}`, false, err.message);
             }
         }
         
     } catch (error) {
         console.log('❌ Failed to create Supabase client:', error.message);
+        logTestResult('Client Creation', false, `Failed to create client: ${error.message}`);
+    }
+    
+    // Print final results
+    console.log('\n🎯 Test Summary:');
+    console.log(`📊 Total Tests: ${totalTests}`);
+    console.log(`✅ Passed: ${passedTests}`);
+    console.log(`❌ Failed: ${totalTests - passedTests}`);
+    
+    if (hasErrors) {
+        console.log('\n❌ Some tests failed! Check configuration and try again.');
+        process.exit(1);
+    } else {
+        console.log('\n✅ All Supabase MCP tests passed!');
+        console.log('🎉 Your Supabase configuration is working correctly.');
+        process.exit(0);
     }
 }
 
 // Load environment variables
 require('dotenv').config({ path: '.env.local' });
 
-testSupabaseMCP().catch(console.error);
+testSupabaseMCP().catch((error) => {
+    console.error('❌ Test suite crashed:', error.message);
+    process.exit(1);
+});
