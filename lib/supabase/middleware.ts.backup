@@ -1,0 +1,34 @@
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export async function updateSession(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  const supabase = createMiddlewareClient({ req: request, res: response })
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Protect admin routes
+  if (request.nextUrl.pathname.startsWith('/admin') && !user) {
+    return NextResponse.redirect(new URL('/auth/login', request.url))
+  }
+
+  // Protect profile routes
+  if (request.nextUrl.pathname.startsWith('/profile') && !user) {
+    return NextResponse.redirect(new URL('/auth/login', request.url))
+  }
+
+  // Redirect authenticated users away from auth pages
+  if (request.nextUrl.pathname.startsWith('/auth') && user) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  return response
+}
