@@ -90,13 +90,37 @@ export const AdminAdvancedUserManagement = React.memo(() => {
   const [messageContent, setMessageContent] = useState("")
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
 
-  // TODO: Replace with actual API calls
-  // useEffect(() => {
-  //   // Load activity logs from API
-  //   // Load user segments from API
-  //   // Load messages from API
-  //   // Load users from API
-  // }, [])
+  // Load all data on component mount
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        // Load activity logs from API
+        const activityLogsResponse = await AdvancedUserRealtimeService.getUserActivityLogs()
+        setUserActivityLogs(activityLogsResponse || [])
+        
+        // Load user segments from API
+        const segmentsResponse = await AdvancedUserRealtimeService.getUserSegments()
+        setUserSegments(segmentsResponse || [])
+        
+        // Load messages from API
+        const messagesResponse = await AdvancedUserRealtimeService.getMessages()
+        setMessages(messagesResponse || [])
+        
+        // Load users from API
+        const usersResponse = await UserRealtimeService.getUsers()
+        setUsers(usersResponse || [])
+      } catch (error) {
+        console.error('Error loading advanced user management data:', error)
+        // Set empty arrays as fallback
+        setUserActivityLogs([])
+        setUserSegments([])
+        setMessages([])
+        setUsers([])
+      }
+    }
+
+    loadAllData()
+  }, [])
 
   // Format date for display
   const formatDate = (dateString: string | null | undefined) => {

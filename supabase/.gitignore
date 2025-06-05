@@ -1,0 +1,14 @@
+# Supabase temporary files
+.temp/
+*.backup
+
+# Local development files
+.env
+.env.local
+
+# Database dumps
+*.sql.dump
+
+# IDE files
+.vscode/
+.idea/
