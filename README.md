@@ -1,172 +1,121 @@
-# Nexus
+# Nexus - Your MBA Journey Companion 🎓
 
-A comprehensive platform for managing university applications, scholarships, and educational resources.
+**Transform your MBA application process from overwhelming to organized**
 
-## Features
+Nexus is your all-in-one platform for managing your MBA application journey. Whether you're just starting to explore business schools or actively applying to your dream programs, Nexus helps you stay organized, informed, and on track throughout the entire process.
 
-- 🎓 University and MBA school exploration
-- 📝 Application timeline management
-- 💰 Scholarship discovery and filtering
-- 📚 Knowledge base and documentation
-- 👥 User profile and settings management
-- 🔐 Secure authentication with Supabase
-- 📱 Responsive design with modern UI
+## ✨ What Makes Nexus Special
 
-## Tech Stack
+### 🎯 **Complete Application Management**
+Stop juggling spreadsheets, sticky notes, and multiple websites. Nexus centralizes everything you need for your MBA applications in one beautiful, easy-to-use platform.
 
-- **Frontend**: Next.js 14, React, TypeScript
-- **Backend**: Supabase (PostgreSQL, Auth, Storage)
-- **Styling**: Tailwind CSS
-- **UI Components**: Radix UI, shadcn/ui
-- **Development**: ESLint, TypeScript
+### 📚 **Comprehensive School Database**
+Explore and compare hundreds of MBA programs worldwide with detailed information about rankings, requirements, deadlines, and more.
 
-## Prerequisites
+### ⏰ **Never Miss a Deadline**
+Smart calendar integration and timeline management ensure you never miss an important application deadline or milestone.
 
-- Node.js 18+ 
-- npm or yarn
-- Supabase account
+### 💰 **Scholarship Discovery**
+Find and track scholarship opportunities that match your profile and goals.
 
-## Setup Instructions
+## 🚀 Key Features
 
-### 1. Clone the repository
+### **📊 Dashboard & Profile**
+- **Personalized Dashboard**: Get a bird's-eye view of your application progress
+- **Profile Builder**: Create a comprehensive profile that tracks your academic background, work experience, and goals
+- **Progress Tracking**: See how complete your applications are and what steps are remaining
 
-```bash
-git clone <repository-url>
-cd nexus
-```
+### **🏫 School Explorer**
+- **MBA School Database**: Browse and research business schools from around the world
+- **School Comparison**: Side-by-side comparison of programs, requirements, and statistics
+- **Detailed Profiles**: In-depth information about each school including rankings, class profiles, and admission requirements
 
-### 2. Install dependencies
+### **📝 Application Management**
+- **Application Tracker**: Monitor the status of all your applications in one place
+- **Document Organization**: Keep track of essays, transcripts, recommendation letters, and other required documents
+- **Requirements Checklist**: Never forget what's needed for each application
 
-```bash
-npm install
-```
+### **📅 Timeline & Calendar**
+- **Smart Deadlines**: Automatic tracking of application deadlines, test dates, and interview schedules
+- **Personal Timeline**: Customized timeline based on your target application rounds
+- **Calendar Integration**: Sync important dates with your preferred calendar app
 
-### 3. Environment Configuration
+### **💡 Scholarship Hub**
+- **Scholarship Database**: Discover scholarship opportunities from schools and external organizations
+- **Eligibility Matching**: Find scholarships that match your background and profile
+- **Application Tracking**: Keep track of scholarship applications and deadlines
 
-Copy the example environment file and configure your variables:
+### **📖 Knowledge Base**
+- **Application Tips**: Expert advice on essays, interviews, and application strategy
+- **School Insights**: Learn about campus culture, career outcomes, and student experiences
+- **Test Prep Resources**: Information about GMAT, GRE, and other required tests
 
-```bash
-cp .env.example .env.local
-```
+### **⚙️ Smart Features**
+- **Intelligent Recommendations**: Get personalized school suggestions based on your profile and preferences
+- **Deadline Alerts**: Receive timely notifications about upcoming deadlines
+- **Progress Insights**: Track your application completion percentage and identify areas that need attention
 
-Required environment variables:
+## 🌟 Who Is Nexus For?
 
-```env
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+### **Prospective MBA Students**
+- Research and compare business schools
+- Plan your application timeline
+- Track application progress
+- Discover scholarship opportunities
 
-# Optional: OpenAI API Key for AI features
-OPENAI_API_KEY=your_openai_api_key
-```
+### **Current Applicants**
+- Manage multiple applications simultaneously
+- Keep track of requirements and deadlines
+- Organize application documents
+- Monitor application status
 
-### 4. Supabase Setup
+### **Career Changers**
+- Explore MBA programs that align with career goals
+- Understand admission requirements
+- Plan the application process timeline
+- Access resources for application preparation
 
-#### Option A: Using Supabase Cloud
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Go to Settings > API to find your URL and anon key
-3. Add these to your `.env.local` file
+## 💪 Why Choose Nexus?
 
-#### Option B: Local Development
-1. Install Supabase CLI: `npm install -g supabase`
-2. Initialize Supabase: `supabase init`
-3. Start local services: `supabase start`
-4. The local URLs will be displayed in terminal
+### **Save Time**
+No more switching between multiple websites, spreadsheets, and documents. Everything you need is in one place.
 
-### 5. Database Setup
+### **Stay Organized**
+Keep track of deadlines, requirements, and progress with intelligent organization tools.
 
-Run the database migrations:
+### **Make Informed Decisions**
+Access comprehensive data and insights to choose the right programs for your goals.
 
-```bash
-# For cloud Supabase
-supabase db push
+### **Reduce Stress**
+Turn the overwhelming MBA application process into a manageable, step-by-step journey.
 
-# For local development
-supabase db reset
-```
+### **Increase Success**
+Never miss deadlines, requirements, or opportunities with smart tracking and alerts.
 
-### 6. Start Development Server
+## 🎯 Getting Started
 
-```bash
-npm run dev
-```
+1. **Create Your Profile**: Tell us about your background, goals, and preferences
+2. **Explore Schools**: Browse our comprehensive database of MBA programs
+3. **Plan Your Timeline**: Set up your application calendar with important deadlines
+4. **Track Applications**: Add the schools you're applying to and monitor your progress
+5. **Discover Scholarships**: Find financial aid opportunities that match your profile
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+## 🔒 Your Data, Your Privacy
 
-## Project Structure
+We take your privacy seriously. Your personal information and application data are secure and never shared with third parties without your explicit consent.
 
-```
-app/                    # Next.js app router pages
-├── api/               # API routes
-├── auth/              # Authentication pages
-├── documentation/     # Documentation pages
-├── profile/           # User profile pages
-├── universities/      # University exploration
-├── mba-schools/       # MBA school management
-├── scholarships/      # Scholarship discovery
-└── timeline/          # Application timeline
+## 📱 Access Anywhere
 
-components/            # React components
-├── ui/               # shadcn/ui components
-├── providers/        # Context providers
-├── admin-*.tsx       # Admin management components
-└── *.tsx             # Feature components
+Nexus works seamlessly across all your devices - desktop, tablet, and mobile. Start your research on your laptop and check deadlines on your phone.
 
-lib/                  # Utility libraries
-├── supabase/         # Supabase client and utilities
-├── database-service.ts
-├── user-service.ts
-└── utils.ts
+## 🤝 Support
 
-supabase/             # Supabase configuration
-├── config.toml       # Local development config
-└── migrations/       # Database migrations
-```
+Need help? Our support team is here to assist you throughout your MBA journey. Whether you have questions about the platform or need guidance on your applications, we're here to help.
 
-## Available Scripts
+---
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript checks
+**Ready to transform your MBA application experience?**
 
-## Environment Variables Reference
+Join thousands of successful MBA applicants who have used Nexus to organize their journey and achieve their business school dreams.
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous key | Yes |
-| `OPENAI_API_KEY` | OpenAI API key for AI features | No |
-
-## Deployment
-
-### Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy
-
-### Manual Deployment
-
-```bash
-npm run build
-npm run start
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-## Support
-
-For support and questions, please open an issue in the GitHub repository.
-
-## License
-
-This project is licensed under the MIT License.
+*Your MBA journey starts here.* 🚀

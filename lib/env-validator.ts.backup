@@ -1,0 +1,99 @@
+/**
+ * Environment Configuration Validator
+ * Use this to check if all required environment variables are properly loaded
+ */
+
+export interface EnvValidationResult {
+  isValid: boolean;
+  missing: string[];
+  present: string[];
+  errors: string[];
+}
+
+export function validateEnvironment(): EnvValidationResult {
+  const requiredVars = [
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY'
+  ];
+
+  const result: EnvValidationResult = {
+    isValid: true,
+    missing: [],
+    present: [],
+    errors: []
+  };
+
+  // Check if variables exist and are valid
+  for (const varName of requiredVars) {
+    const value = process.env[varName];
+    
+    if (!value) {
+      result.missing.push(varName);
+      result.isValid = false;
+    } else if (value.includes('your_') || value.includes('_here')) {
+      result.errors.push(`${varName} contains placeholder text`);
+      result.isValid = false;
+    } else {
+      result.present.push(varName);
+    }
+  }
+
+  // Validate URL format
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (supabaseUrl && !supabaseUrl.match(/^https:\/\/[a-z0-9]+\.supabase\.co$/)) {
+    result.errors.push('NEXT_PUBLIC_SUPABASE_URL format appears invalid');
+    result.isValid = false;
+  }
+
+  // Validate key formats (basic check)
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (anonKey && (!anonKey.startsWith('eyJ') || anonKey.length < 100)) {
+    result.errors.push('NEXT_PUBLIC_SUPABASE_ANON_KEY format appears invalid');
+    result.isValid = false;
+  }
+
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceKey && (!serviceKey.startsWith('eyJ') || serviceKey.length < 100)) {
+    result.errors.push('SUPABASE_SERVICE_ROLE_KEY format appears invalid');
+    result.isValid = false;
+  }
+
+  return result;
+}
+
+export function logEnvironmentStatus(): void {
+  console.log('🔍 Environment Validation Check...');
+  
+  const result = validateEnvironment();
+  
+  if (result.isValid) {
+    console.log('✅ All environment variables are properly configured');
+    result.present.forEach(variable => console.log(`  ✓ ${variable}`));
+  } else {
+    console.log('❌ Environment configuration issues found:');
+    
+    if (result.missing.length > 0) {
+      console.log('  Missing variables:');
+      result.missing.forEach(variable => console.log(`    ❌ ${variable}`));
+    }
+    
+    if (result.errors.length > 0) {
+      console.log('  Configuration errors:');
+      result.errors.forEach(error => console.log(`    ⚠️ ${error}`));
+    }
+    
+    console.log('\n💡 Fix: Check your .env.local file and restart your development server');
+  }
+}
+
+// Auto-validate in development (but don't block startup)
+if (process.env.NODE_ENV === 'development') {
+  // Only log on client-side to avoid server/client mismatch, and delay it
+  if (typeof window !== 'undefined') {
+    // Delay validation to allow environment to fully load
+    setTimeout(() => {
+      logEnvironmentStatus();
+    }, 1000);
+  }
+}

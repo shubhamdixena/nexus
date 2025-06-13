@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import * as React from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -728,9 +729,11 @@ const AdminMbaSchoolsManagement = React.memo(() => {
                   <Filter className="mr-2 h-4 w-4" />
                   Filters
                 </Button>
-                <Button onClick={() => setIsAddSchoolOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add MBA School
+                <Button asChild>
+                  <Link href="/admin/add-mba-school">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add MBA School
+                  </Link>
                 </Button>
                 <BulkDataOperations
                   entityType="MBA Schools"

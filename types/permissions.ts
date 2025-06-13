@@ -14,6 +14,12 @@ export type Permission =
   | 'scholarships:read' | 'scholarships:write' | 'scholarships:delete'
   // SOP management
   | 'sops:read' | 'sops:write' | 'sops:delete'
+  // Admin granular permissions
+  | 'admin.read' | 'admin.write'
+  | 'admin.users.manage' | 'admin.users.advanced'
+  | 'admin.schools.manage' | 'admin.scholarships.manage'
+  | 'admin.applications.manage' | 'admin.sop.manage'
+  | 'admin.data.manage' | 'admin.settings.manage'
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   admin: [
@@ -23,7 +29,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'applications:read', 'applications:write', 'applications:delete',
     'scholarships:read', 'scholarships:write', 'scholarships:delete',
     'sops:read', 'sops:write', 'sops:delete',
-    'admin:access'
+    'admin:access',
+    // Admin granular permissions
+    'admin.read', 'admin.write',
+    'admin.users.manage', 'admin.users.advanced',
+    'admin.schools.manage', 'admin.scholarships.manage',
+    'admin.applications.manage', 'admin.sop.manage',
+    'admin.data.manage', 'admin.settings.manage'
   ],
   user: [
     // Read access to public data, manage own applications

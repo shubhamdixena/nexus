@@ -1,10 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertTriangle, RefreshCw, Home } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { ErrorFallback } from "@/components/error-fallback"
+import { logError } from "@/lib/error-handling"
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -38,31 +36,18 @@ class ErrorBoundaryClass extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Global Error Boundary caught an error:", error, errorInfo)
-    
-    // Log to external service if needed
-    this.logErrorToService(error, errorInfo)
+    // Use our centralized error logging
+    logError(error, {
+      component: "GlobalErrorBoundary",
+      componentStack: errorInfo.componentStack,
+      url: typeof window !== "undefined" ? window.location.href : "",
+    })
     
     this.setState({
       hasError: true,
       error,
       errorInfo,
     })
-  }
-
-  logErrorToService = (error: Error, errorInfo: React.ErrorInfo) => {
-    // Here you could send errors to external services like Sentry, LogRocket, etc.
-    const errorData = {
-      message: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
-      timestamp: new Date().toISOString(),
-      url: typeof window !== "undefined" ? window.location.href : "",
-      userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "",
-    }
-    
-    // For now, just log to console
-    console.error("Error details:", errorData)
   }
 
   render() {
@@ -83,76 +68,23 @@ class ErrorBoundaryClass extends React.Component<
         )
       }
 
-      return <DefaultErrorFallback error={this.state.error!} />
+      return (
+        <ErrorFallback
+          error={this.state.error!}
+          reset={() => this.setState({ hasError: false })}
+          goHome={() => {
+            if (typeof window !== "undefined") {
+              window.location.href = "/"
+            }
+          }}
+          variant="page"
+          showErrorDetails={process.env.NODE_ENV === "development"}
+        />
+      )
     }
 
     return this.props.children
   }
-}
-
-function DefaultErrorFallback({ error }: { error: Error }) {
-  const router = useRouter()
-
-  const handleReset = () => {
-    // Reload the page
-    if (typeof window !== "undefined") {
-      window.location.reload()
-    }
-  }
-
-  const handleGoHome = () => {
-    router.push("/")
-  }
-
-  const isDevelopment = process.env.NODE_ENV === "development"
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-lg">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-            <AlertTriangle className="h-6 w-6 text-red-600" />
-          </div>
-          <CardTitle className="text-xl font-semibold text-gray-900">
-            Something went wrong
-          </CardTitle>
-          <CardDescription className="text-gray-600">
-            We encountered an unexpected error. Please try refreshing the page or
-            go back to the home page.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isDevelopment && (
-            <div className="rounded-md bg-red-50 p-4">
-              <h4 className="text-sm font-medium text-red-800 mb-2">
-                Error Details (Development Mode)
-              </h4>
-              <pre className="text-xs text-red-700 whitespace-pre-wrap break-words">
-                {error.message}
-                {error.stack && (
-                  <>
-                    {"\n\nStack trace:\n"}
-                    {error.stack}
-                  </>
-                )}
-              </pre>
-            </div>
-          )}
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button onClick={handleReset} className="flex-1">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Try Again
-            </Button>
-            <Button onClick={handleGoHome} variant="outline" className="flex-1">
-              <Home className="mr-2 h-4 w-4" />
-              Go Home
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
 }
 
 export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
@@ -163,22 +95,13 @@ export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
   )
 }
 
-// Hook for programmatic error reporting
+// Hook for programmatic error reporting (use the new error handling system instead)
 export function useErrorReporting() {
   const reportError = React.useCallback((error: Error, context?: string) => {
-    console.error(`Error reported from ${context || "unknown context"}:`, error)
-    
-    // Here you could send to external error reporting service
-    const errorData = {
-      message: error.message,
-      stack: error.stack,
-      context,
-      timestamp: new Date().toISOString(),
-      url: typeof window !== "undefined" ? window.location.href : "",
-    }
-    
-    // Log for now, could integrate with Sentry, etc.
-    console.error("Reported error:", errorData)
+    logError(error, { 
+      component: context || "unknown", 
+      reportedProgrammatically: true 
+    })
   }, [])
 
   return { reportError }

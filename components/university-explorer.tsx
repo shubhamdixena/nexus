@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import * as React from "react"
-import { Bookmark, BookmarkCheck, Filter, MapPin, Search, X, Loader2, AlertCircle, RefreshCw, ExternalLink } from "lucide-react"
+import { Bookmark, BookmarkCheck, Filter, MapPin, Search, X, Loader2, AlertCircle, RefreshCw, ExternalLink, GitCompare } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -30,17 +30,24 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { UniversityRealtimeService } from "@/lib/database-service"
+import { useBookmarks } from "@/hooks/use-bookmarks"
+import { CompareButton, CompareCounter } from "@/components/compare-button"
+import { ComparisonDrawer } from "@/components/comparison-drawer"
+import { InlineComparison } from "@/components/inline-comparison"
+import { ReportDataButton } from "@/components/report-data-button"
+import { useCompare } from "@/hooks/use-compare"
 import type { University } from "@/types"
 
 const UniversityExplorer = React.memo(() => {
   // State management
   const [showFilters, setShowFilters] = useState(false)
-  const [savedUniversities, setSavedUniversities] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const [selectedRanking, setSelectedRanking] = useState<string | null>(null)
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null)
+  const [showInlineComparison, setShowInlineComparison] = useState(false)
+  const [showComparisonDrawer, setShowComparisonDrawer] = useState(false)
   
   // Real database state
   const [universities, setUniversities] = useState<University[]>([])
@@ -49,6 +56,18 @@ const UniversityExplorer = React.memo(() => {
   const [totalCount, setTotalCount] = useState(0)
   const [retryCount, setRetryCount] = useState(0)
   const [isRetrying, setIsRetrying] = useState(false)
+
+  // Use bookmark service instead of local state
+  const {
+    bookmarkedItems: savedUniversities,
+    isBookmarked,
+    toggleBookmark,
+    loading: bookmarkLoading,
+    error: bookmarkError
+  } = useBookmarks('university')
+
+  // Use compare hook to check if we have universities to compare
+  const { compareCount } = useCompare()
 
   const itemsPerPage = 6
   const maxRetries = 3
@@ -145,12 +164,10 @@ const UniversityExplorer = React.memo(() => {
 
   // Reset filters function
   const resetFilters = () => {
-    setFilters({
-      search: '',
-      country: '',
-      type: '',
-      ranking: ''
-    })
+    setSearchQuery('')
+    setSelectedCountry(null)
+    setSelectedProgram(null)
+    setSelectedRanking(null)
     setCurrentPage(1)
     setError(null)
     if (searchInputRef.current) {
@@ -158,26 +175,10 @@ const UniversityExplorer = React.memo(() => {
     }
   }
 
-  // Retry function for error recovery
-  const retryFetch = () => {
-    setError(null)
-    fetchUniversities()
-  }
-
   // Optimize useEffect dependencies
   useEffect(() => {
     fetchUniversities()
   }, [fetchUniversities])
-
-  // Memoize handlers
-  const handleSaveUniversity = useCallback((universityId: string) => {
-    setSavedUniversities(prev => {
-      if (prev.includes(universityId)) {
-        return prev.filter(id => id !== universityId)
-      }
-      return [...prev, universityId]
-    })
-  }, [])
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)
@@ -208,20 +209,6 @@ const UniversityExplorer = React.memo(() => {
 
     return () => clearTimeout(timer)
   }, [searchQuery])
-
-  const toggleSaved = useCallback((id: string) => {
-    try {
-      setSavedUniversities(prev => {
-        if (prev.includes(id)) {
-          return prev.filter((universityId) => universityId !== id)
-        } else {
-          return [...prev, id]
-        }
-      })
-    } catch (error) {
-      console.error('Error toggling saved university:', error)
-    }
-  }, [])
 
   // Real-time subscription for updates
   useEffect(() => {
@@ -358,6 +345,20 @@ const UniversityExplorer = React.memo(() => {
             {showFilters ? <X className="mr-2 h-4 w-4" /> : <Filter className="mr-2 h-4 w-4" />}
             {showFilters ? "Hide Filters" : "Show Filters"}
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowComparisonDrawer(!showComparisonDrawer)}
+            className="relative"
+          >
+            <GitCompare className="mr-2 h-4 w-4" />
+            Compare
+            {compareCount > 0 && (
+              <span className="ml-1 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                {compareCount}
+              </span>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -445,10 +446,23 @@ const UniversityExplorer = React.memo(() => {
       )}
 
       <Tabs defaultValue="all" className="mb-6">
-        <TabsList>
-          <TabsTrigger value="all">All Universities ({universities.length})</TabsTrigger>
-          <TabsTrigger value="saved">Saved ({savedUniversities.length})</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between mb-4">
+          <TabsList>
+            <TabsTrigger value="all">All Universities ({universities.length})</TabsTrigger>
+            <TabsTrigger value="saved">Saved ({savedUniversities.length})</TabsTrigger>
+          </TabsList>
+          
+          <Button 
+            onClick={() => setShowInlineComparison(!showInlineComparison)}
+            disabled={compareCount === 0}
+            size="sm"
+            variant={showInlineComparison ? "default" : "outline"}
+            className="ml-4"
+          >
+            <GitCompare className="mr-2 h-4 w-4" />
+            {showInlineComparison ? 'Hide' : 'Compare'} {compareCount > 0 && `(${compareCount})`}
+          </Button>
+        </div>
 
         {/* Enhanced tab content with better loading states */}
         <TabsContent value="all" className="mt-4">
@@ -471,8 +485,8 @@ const UniversityExplorer = React.memo(() => {
                   <UniversityCard
                     key={university.id}
                     university={university}
-                    isSaved={savedUniversities.includes(university.id)}
-                    onToggleSave={() => toggleSaved(university.id)}
+                    isSaved={isBookmarked(university.id)}
+                    onToggleSave={() => toggleBookmark(university.id)}
                   />
                 ))}
               </div>
@@ -527,7 +541,7 @@ const UniversityExplorer = React.memo(() => {
                   key={university.id}
                   university={university}
                   isSaved={true}
-                  onToggleSave={() => toggleSaved(university.id)}
+                  onToggleSave={() => toggleBookmark(university.id)}
                 />
               ))}
           </div>
@@ -538,6 +552,16 @@ const UniversityExplorer = React.memo(() => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Comparison Drawer */}
+      {showComparisonDrawer && <ComparisonDrawer />}
+
+      {/* Inline Comparison Section */}
+      {showInlineComparison && (
+        <div className="mt-8">
+          <InlineComparison />
+        </div>
+      )}
     </div>
   )
 })
@@ -599,14 +623,29 @@ function UniversityCard({
         <Button variant="outline" size="sm" asChild>
           <Link href={`/universities/${university.id}`}>View Profile</Link>
         </Button>
-        {university.website && (
-          <a href={university.website} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Visit Website
-            </Button>
-          </a>
-        )}
+        <div className="flex gap-2">
+          <CompareButton 
+            school={university as any} 
+            variant="outline" 
+            size="sm"
+          />
+          <ReportDataButton 
+            dataType="university"
+            dataId={university.id}
+            dataTable="universities"
+            currentData={university}
+            variant="outline"
+            size="sm"
+          />
+          {university.website && (
+            <a href={university.website} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Visit Website
+              </Button>
+            </a>
+          )}
+        </div>
       </CardFooter>
     </Card>
   )

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { Edit, GraduationCap, Mail, MapPin, Loader2, Trophy, Target, Settings, AlertCircle, CheckCircle2, RefreshCw, Wifi, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +11,6 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ProfileSetupModal } from "@/components/profile-setup-modal"
 import { useToast } from "@/hooks/use-toast"
 
 interface LoadError {
@@ -26,6 +26,7 @@ export function UserProfile() {
   const [retryCount, setRetryCount] = useState(0)
 
   const { toast } = useToast()
+  const router = useRouter()
 
   const determineErrorType = (error: any): LoadError => {
     if (!navigator.onLine) {
@@ -200,7 +201,7 @@ export function UserProfile() {
   const isProfileComplete = completionPercentage >= 80
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Network status indicator */}
       {!navigator.onLine && (
         <Alert className="border-orange-500 bg-orange-50">
@@ -212,24 +213,24 @@ export function UserProfile() {
       )}
 
       {/* Profile Header */}
-      <Card>
-        <CardHeader>
+      <Card className="shadow-lg">
+        <CardHeader className="pb-6">
           <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-4">
-              <Avatar className="h-20 w-20">
+            <div className="flex items-center space-x-6">
+              <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
                 <AvatarImage src={profileData.avatar_url} />
-                <AvatarFallback className="text-lg">
+                <AvatarFallback className="text-xl font-semibold">
                   {profileData.first_name?.charAt(0)}{profileData.last_name?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <CardTitle className="text-2xl">
+              <div className="space-y-2">
+                <CardTitle className="text-3xl font-bold">
                   {profileData.first_name} {profileData.last_name}
                 </CardTitle>
-                <CardDescription className="text-base">
+                <CardDescription className="text-lg">
                   {profileData.bio || "Student Profile"}
                 </CardDescription>
-                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-6 mt-3 text-sm text-muted-foreground">
                   {profileData.email && (
                     <div className="flex items-center gap-1">
                       <Mail className="h-4 w-4" />
@@ -245,39 +246,39 @@ export function UserProfile() {
                 </div>
               </div>
             </div>
-            <ProfileSetupModal onProfileUpdate={handleProfileUpdate}>
-              <Button>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Profile
-              </Button>
-            </ProfileSetupModal>
+            <Button size="lg" onClick={() => router.push('/profile-setup')} className="shadow-sm">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Profile
+            </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6 border-t">
           {/* Profile Completion Status */}
-          <div className="space-y-2">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Profile Completion</span>
-              <span className="text-sm text-muted-foreground">{completionPercentage}%</span>
+              <span className="text-base font-semibold">Profile Completion</span>
+              <span className="text-base font-medium text-muted-foreground">{completionPercentage}%</span>
             </div>
-            <Progress value={completionPercentage} className="h-2" />
+            <Progress value={completionPercentage} className="h-3" />
             {!isProfileComplete && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
+              <Alert className="border-l-4 border-l-blue-500">
+                <AlertCircle className="h-5 w-5" />
+                <AlertDescription className="text-base">
                   Complete your profile to get better recommendations and opportunities.
-                  <ProfileSetupModal onProfileUpdate={handleProfileUpdate}>
-                    <Button variant="link" className="p-0 h-auto ml-1">
-                      Complete now
-                    </Button>
-                  </ProfileSetupModal>
+                  <Button 
+                    variant="link" 
+                    className="p-0 h-auto ml-1 text-blue-600 hover:text-blue-800"
+                    onClick={() => router.push('/profile-setup')}
+                  >
+                    Complete now
+                  </Button>
                 </AlertDescription>
               </Alert>
             )}
             {isProfileComplete && (
-              <Alert className="border-green-500 bg-green-50">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
+              <Alert className="border-green-500 bg-green-50 border-l-4 border-l-green-500">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <AlertDescription className="text-green-800 text-base">
                   Your profile is complete! You're all set to receive personalized recommendations.
                 </AlertDescription>
               </Alert>
@@ -288,52 +289,52 @@ export function UserProfile() {
 
       {/* Profile Details Tabs */}
       <Tabs defaultValue="education" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="education" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-4 h-12 p-1 mb-8">
+          <TabsTrigger value="education" className="flex items-center gap-2 h-10 text-sm font-medium">
             <GraduationCap className="h-4 w-4" />
             Education
           </TabsTrigger>
-          <TabsTrigger value="scores" className="flex items-center gap-2">
+          <TabsTrigger value="scores" className="flex items-center gap-2 h-10 text-sm font-medium">
             <Trophy className="h-4 w-4" />
             Test Scores
           </TabsTrigger>
-          <TabsTrigger value="goals" className="flex items-center gap-2">
+          <TabsTrigger value="goals" className="flex items-center gap-2 h-10 text-sm font-medium">
             <Target className="h-4 w-4" />
             Goals
           </TabsTrigger>
-          <TabsTrigger value="preferences" className="flex items-center gap-2">
+          <TabsTrigger value="preferences" className="flex items-center gap-2 h-10 text-sm font-medium">
             <Settings className="h-4 w-4" />
             Preferences
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="education" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Education Background</CardTitle>
+        <TabsContent value="education" className="space-y-6 mt-0">
+          <Card className="shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Education Background</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Highest Degree</h4>
-                  <p className="font-medium">{profileData.highest_degree || "Not specified"}</p>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Highest Degree</h4>
+                  <p className="font-medium text-base">{profileData.highest_degree || "Not specified"}</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Field of Study</h4>
-                  <p className="font-medium">{profileData.field_of_study || "Not specified"}</p>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Field of Study</h4>
+                  <p className="font-medium text-base">{profileData.field_of_study || "Not specified"}</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">University</h4>
-                  <p className="font-medium">{profileData.university || "Not specified"}</p>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">University</h4>
+                  <p className="font-medium text-base">{profileData.university || "Not specified"}</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Graduation Year</h4>
-                  <p className="font-medium">{profileData.graduation_year || "Not specified"}</p>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Graduation Year</h4>
+                  <p className="font-medium text-base">{profileData.graduation_year || "Not specified"}</p>
                 </div>
                 {profileData.gpa && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground">GPA</h4>
-                    <p className="font-medium">{profileData.gpa}</p>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">GPA</h4>
+                    <p className="font-medium text-base">{profileData.gpa}</p>
                   </div>
                 )}
               </div>
@@ -341,19 +342,19 @@ export function UserProfile() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="scores" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Test Scores</CardTitle>
-              <CardDescription>Standardized test scores for applications</CardDescription>
+        <TabsContent value="scores" className="space-y-6 mt-0">
+          <Card className="shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Test Scores</CardTitle>
+              <CardDescription className="text-base">Standardized test scores for applications</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-8 md:grid-cols-2">
                 {profileData.test_scores?.gmat && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">GMAT</h4>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-lg px-3 py-1">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-lg">GMAT</h4>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="text-xl px-4 py-2 font-bold">
                         {profileData.test_scores.gmat}
                       </Badge>
                       {profileData.test_scores.gmatDate && (
@@ -366,10 +367,10 @@ export function UserProfile() {
                 )}
                 
                 {profileData.test_scores?.gre && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">GRE</h4>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-lg px-3 py-1">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-lg">GRE</h4>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="text-xl px-4 py-2 font-bold">
                         {profileData.test_scores.gre}
                       </Badge>
                       {profileData.test_scores.greDate && (
@@ -382,10 +383,10 @@ export function UserProfile() {
                 )}
                 
                 {profileData.test_scores?.toefl && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">TOEFL</h4>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-lg px-3 py-1">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-lg">TOEFL</h4>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="text-xl px-4 py-2 font-bold">
                         {profileData.test_scores.toefl}
                       </Badge>
                       {profileData.test_scores.toeflDate && (
@@ -398,10 +399,10 @@ export function UserProfile() {
                 )}
                 
                 {profileData.test_scores?.ielts && (
-                  <div className="space-y-2">
-                    <h4 className="font-medium">IELTS</h4>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-lg px-3 py-1">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-lg">IELTS</h4>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="text-xl px-4 py-2 font-bold">
                         {profileData.test_scores.ielts}
                       </Badge>
                       {profileData.test_scores.ieltsDate && (
@@ -415,14 +416,17 @@ export function UserProfile() {
                 
                 {!profileData.test_scores?.gmat && !profileData.test_scores?.gre && 
                  !profileData.test_scores?.toefl && !profileData.test_scores?.ielts && (
-                  <div className="col-span-2 text-center py-8">
-                    <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No test scores added yet</p>
-                    <ProfileSetupModal onProfileUpdate={handleProfileUpdate}>
-                      <Button variant="outline" className="mt-2">
-                        Add Test Scores
-                      </Button>
-                    </ProfileSetupModal>
+                  <div className="col-span-2 text-center py-12">
+                    <Trophy className="h-16 w-16 mx-auto text-muted-foreground mb-6" />
+                    <p className="text-lg text-muted-foreground mb-4">No test scores added yet</p>
+                    <Button 
+                      variant="outline" 
+                      size="lg"
+                      className="mt-2"
+                      onClick={() => router.push('/profile-setup')}
+                    >
+                      Add Test Scores
+                    </Button>
                   </div>
                 )}
               </div>
@@ -430,95 +434,97 @@ export function UserProfile() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="goals" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Career Goals</CardTitle>
-              <CardDescription>Your academic and career aspirations</CardDescription>
+        <TabsContent value="goals" className="space-y-6 mt-0">
+          <Card className="shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Career Goals</CardTitle>
+              <CardDescription className="text-base">Your academic and career aspirations</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Target Degree</h4>
-                  <p className="font-medium">{profileData.target_degree?.toUpperCase() || "Not specified"}</p>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Target Degree</h4>
+                  <p className="font-medium text-base">{profileData.target_degree?.toUpperCase() || "Not specified"}</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Work Experience</h4>
-                  <p className="font-medium">{profileData.work_experience_category || "Not specified"} years</p>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Work Experience</h4>
+                  <p className="font-medium text-base">{profileData.work_experience_category || "Not specified"} years</p>
                 </div>
               </div>
               
               {profileData.target_programs && profileData.target_programs.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Target Programs</h4>
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Target Programs</h4>
+                  <div className="flex flex-wrap gap-3">
                     {profileData.target_programs.map((program: string, index: number) => (
-                      <Badge key={index} variant="outline">{program}</Badge>
+                      <Badge key={index} variant="outline" className="px-3 py-1 text-sm">{program}</Badge>
                     ))}
                   </div>
                 </div>
               )}
               
               {profileData.preferred_countries && profileData.preferred_countries.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Preferred Countries</h4>
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Preferred Countries</h4>
+                  <div className="flex flex-wrap gap-3">
                     {profileData.preferred_countries.map((country: string, index: number) => (
-                      <Badge key={index} variant="outline">{country}</Badge>
+                      <Badge key={index} variant="outline" className="px-3 py-1 text-sm">{country}</Badge>
                     ))}
                   </div>
                 </div>
               )}
               
               {profileData.career_objective && (
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Career Objective</h4>
-                  <p className="text-sm leading-relaxed">{profileData.career_objective}</p>
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Career Objective</h4>
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <p className="text-base leading-relaxed">{profileData.career_objective}</p>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="preferences" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Study Preferences</CardTitle>
-              <CardDescription>Your preferences for study programs</CardDescription>
+        <TabsContent value="preferences" className="space-y-6 mt-0">
+          <Card className="shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Study Preferences</CardTitle>
+              <CardDescription className="text-base">Your preferences for study programs</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Budget Range</h4>
-                  <p className="font-medium">{profileData.budget_range || "Not specified"}</p>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Budget Range</h4>
+                  <p className="font-medium text-base">{profileData.budget_range || "Not specified"}</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Preferred Start Date</h4>
-                  <p className="font-medium">{profileData.start_date || "Not specified"}</p>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Preferred Start Date</h4>
+                  <p className="font-medium text-base">{profileData.start_date || "Not specified"}</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Study Mode</h4>
-                  <p className="font-medium">{profileData.study_mode || "Not specified"}</p>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Study Mode</h4>
+                  <p className="font-medium text-base">{profileData.study_mode || "Not specified"}</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground">Accommodation</h4>
-                  <p className="font-medium">{profileData.accommodation_preference || "Not specified"}</p>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Accommodation</h4>
+                  <p className="font-medium text-base">{profileData.accommodation_preference || "Not specified"}</p>
                 </div>
               </div>
               
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground mb-2">Scholarship Interest</h4>
-                <Badge variant={profileData.scholarship_interest ? "default" : "secondary"}>
+              <div className="space-y-3">
+                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Scholarship Interest</h4>
+                <Badge variant={profileData.scholarship_interest ? "default" : "secondary"} className="px-3 py-1 text-sm">
                   {profileData.scholarship_interest ? "Interested" : "Not interested"}
                 </Badge>
               </div>
               
               {profileData.communication_preferences && profileData.communication_preferences.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Communication Preferences</h4>
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Communication Preferences</h4>
+                  <div className="flex flex-wrap gap-3">
                     {profileData.communication_preferences.map((pref: string, index: number) => (
-                      <Badge key={index} variant="outline">{pref}</Badge>
+                      <Badge key={index} variant="outline" className="px-3 py-1 text-sm">{pref}</Badge>
                     ))}
                   </div>
                 </div>

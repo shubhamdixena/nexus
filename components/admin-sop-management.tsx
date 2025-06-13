@@ -13,27 +13,16 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { Eye, Edit, Trash2, Plus, Search, Filter, Download, Upload, ChevronLeft, ChevronRight, FileText, User, Calendar, MapPin } from "lucide-react"
-import { SOPRealtimeService } from "@/lib/realtime-services"
+import { SOPRealtimeService, SOP as ImportedSOP } from "@/lib/realtime-services"
 
-interface SOP {
-  id: string
+// Use the imported SOP interface directly and cast data when needed
+type LocalSOP = ImportedSOP & {
   title: string
-  university: string
-  program: string
-  author: string
-  field: string
-  country: string
   content: string
   word_count: number
   version: number
-  status: "active" | "inactive" | "archived"
-  sop_status: "draft" | "final" | "submitted"
   created_at: string
   updated_at: string
-  user_id?: string
-  university_id?: string
-  universities?: { name: string; location: string }
-  users?: { name: string; email: string }
 }
 
 interface FilterState {
@@ -46,13 +35,13 @@ interface FilterState {
 }
 
 export function AdminSopManagement() {
-  const [sops, setSOPs] = useState<SOP[]>([])
+  const [sops, setSOPs] = useState<LocalSOP[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedSOPs, setSelectedSOPs] = useState<string[]>([])
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [editingSOP, setEditingSOP] = useState<SOP | null>(null)
+  const [editingSOP, setEditingSOP] = useState<LocalSOP | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
   const [showFilters, setShowFilters] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -96,7 +85,18 @@ export function AdminSopManagement() {
         sortOrder: "desc",
       })
 
-      setSOPs(response.data)
+      // Cast the response data to ensure required fields are present
+      const sopData = response.data.map(sop => ({
+        ...sop,
+        title: sop.title || '',
+        content: sop.content || '',
+        word_count: sop.word_count || 0,
+        version: sop.version || 1,
+        created_at: sop.created_at || new Date().toISOString(),
+        updated_at: sop.updated_at || new Date().toISOString()
+      })) as LocalSOP[]
+      
+      setSOPs(sopData)
       setTotalPages(response.pagination.totalPages)
       setTotalCount(response.pagination.total)
       setCurrentPage(page)

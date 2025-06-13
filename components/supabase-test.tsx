@@ -37,11 +37,10 @@ export function SupabaseTest() {
   const testAuth = async () => {
     try {
       const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
       const { data: { user } } = await supabase.auth.getUser()
       
-      console.log('Session:', session ? 'Active' : 'None')
       console.log('User:', user ? user.email : 'Not logged in')
+      console.log('Email confirmed:', user?.email_confirmed_at ? 'Yes' : 'No')
     } catch (err: any) {
       console.error('Auth test error:', err.message)
     }

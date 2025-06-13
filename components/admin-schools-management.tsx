@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -184,15 +185,38 @@ export function AdminSchoolsManagement() {
     }
   }
 
+  // Load MBA schools from API
+  const loadMBASchools = async (page = 1, search = "") => {
+    try {
+      const response = await fetch(`/api/admin/mba-schools?page=${page}&limit=50&search=${encodeURIComponent(search)}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      setMbaSchools(result.data || [])
+    } catch (error) {
+      console.error('Error loading MBA schools:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load MBA schools. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
   // Load data on component mount
   useEffect(() => {
     loadSchools()
+    loadMBASchools()
   }, [])
 
   // Handle search with debouncing
   useEffect(() => {
     const timer = setTimeout(() => {
       loadSchools(1, searchTerm)
+      loadMBASchools(1, searchTerm)
     }, 500)
 
     return () => clearTimeout(timer)
@@ -651,9 +675,11 @@ export function AdminSchoolsManagement() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={() => setIsAddSchoolOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add School
+                  <Button asChild>
+                    <Link href="/admin/add-university">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add School
+                    </Link>
                   </Button>
                   <BulkDataOperations
                     entityType="Schools"
@@ -773,9 +799,11 @@ export function AdminSchoolsManagement() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={() => setIsAddMbaSchoolOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add MBA School
+                  <Button asChild>
+                    <Link href="/admin/add-mba-school">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add MBA School
+                    </Link>
                   </Button>
                   <BulkDataOperations
                     entityType="MBA Schools"

@@ -207,10 +207,107 @@ export function ProfileSetupModal({ children, onProfileUpdate }: ProfileSetupMod
               locationPreference: profile.location_preference || "",
             },
           })
+        } else {
+          // Initialize with default empty values if no profile exists
+          setFormData({
+            personal: {
+              firstName: "",
+              lastName: "",
+              email: user?.email || "",
+              phone: "",
+              dateOfBirth: "",
+              nationality: "",
+              bio: "",
+              linkedinUrl: "",
+            },
+            education: {
+              highestDegree: "",
+              fieldOfStudy: "",
+              university: "",
+              graduationYear: "",
+              gpa: "",
+            },
+            scores: {
+              gmat: "",
+              gre: "",
+              toefl: "",
+              ielts: "",
+              gmatDate: "",
+              greDate: "",
+              toeflDate: "",
+              ieltsDate: "",
+            },
+            goals: {
+              targetDegree: "",
+              targetPrograms: [],
+              careerObjective: "",
+              workExperience: "",
+              preferredCountries: [],
+              industryInterests: [],
+              careerLevel: "",
+            },
+            preferences: {
+              budgetRange: "",
+              startDate: "",
+              scholarshipInterest: false,
+              accommodationPreference: "",
+              communicationPreferences: [],
+              studyMode: "",
+              locationPreference: "",
+            },
+          })
         }
       }
     } catch (error) {
       console.error("Error loading profile:", error)
+      // Initialize with default empty values on error
+      setFormData({
+        personal: {
+          firstName: "",
+          lastName: "",
+          email: user?.email || "",
+          phone: "",
+          dateOfBirth: "",
+          nationality: "",
+          bio: "",
+          linkedinUrl: "",
+        },
+        education: {
+          highestDegree: "",
+          fieldOfStudy: "",
+          university: "",
+          graduationYear: "",
+          gpa: "",
+        },
+        scores: {
+          gmat: "",
+          gre: "",
+          toefl: "",
+          ielts: "",
+          gmatDate: "",
+          greDate: "",
+          toeflDate: "",
+          ieltsDate: "",
+        },
+        goals: {
+          targetDegree: "",
+          targetPrograms: [],
+          careerObjective: "",
+          workExperience: "",
+          preferredCountries: [],
+          industryInterests: [],
+          careerLevel: "",
+        },
+        preferences: {
+          budgetRange: "",
+          startDate: "",
+          scholarshipInterest: false,
+          accommodationPreference: "",
+          communicationPreferences: [],
+          studyMode: "",
+          locationPreference: "",
+        },
+      })
       toast({
         title: "Error",
         description: "Failed to load profile data",
@@ -224,6 +321,8 @@ export function ProfileSetupModal({ children, onProfileUpdate }: ProfileSetupMod
   const saveSection = async (sectionId: string, data: any) => {
     setIsSaving(true)
     try {
+      console.log(`Saving ${sectionId} section:`, data)
+      
       const response = await fetch("/api/profile/section", {
         method: "PATCH",
         headers: {
@@ -236,6 +335,7 @@ export function ProfileSetupModal({ children, onProfileUpdate }: ProfileSetupMod
       })
 
       const result = await response.json()
+      console.log("Save response:", result)
 
       if (response.ok && result.success) {
         toast({
@@ -256,16 +356,49 @@ export function ProfileSetupModal({ children, onProfileUpdate }: ProfileSetupMod
         return true
       } else {
         console.error("API Error:", result)
-        throw new Error(result.error || result.details || "Failed to save section")
+        
+        // Handle specific error cases
+        if (result.code === "UNAUTHORIZED") {
+          toast({
+            title: "Authentication Error",
+            description: "Please log in again to save your changes.",
+            variant: "destructive",
+          })
+        } else if (result.code === "VALIDATION_ERROR") {
+          toast({
+            title: "Validation Error",
+            description: "Please check your form data and try again.",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Save Failed",
+            description: result.error || result.details || "Failed to save changes. Please try again.",
+            variant: "destructive",
+          })
+        }
+        
+        return false
       }
     } catch (error) {
       console.error("Error saving section:", error)
-      const errorMessage = error instanceof Error ? error.message : "Failed to save changes"
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      
+      // Handle network errors
+      if (!navigator.onLine) {
+        toast({
+          title: "Network Error",
+          description: "Please check your internet connection and try again.",
+          variant: "destructive",
+        })
+      } else {
+        const errorMessage = error instanceof Error ? error.message : "Failed to save changes"
+        toast({
+          title: "Save Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+      
       return false
     } finally {
       setIsSaving(false)
@@ -336,37 +469,72 @@ interface ProfileSectionProps {
 }
 
 function ProfileSection({ section, data, onSave, isLoading, isSaving }: ProfileSectionProps) {
+  // Create safe default values based on section type
+  const getSafeDefaults = (sectionId: string) => {
+    const baseDefaults: Record<string, any> = {
+      personal: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        dateOfBirth: "",
+        nationality: "",
+        bio: "",
+        linkedinUrl: "",
+      },
+      education: {
+        highestDegree: "",
+        fieldOfStudy: "",
+        university: "",
+        graduationYear: "",
+        gpa: "",
+      },
+      scores: {
+        gmat: "",
+        gre: "",
+        toefl: "",
+        ielts: "",
+        gmatDate: "",
+        greDate: "",
+        toeflDate: "",
+        ieltsDate: "",
+      },
+      goals: {
+        targetDegree: "",
+        targetPrograms: [],
+        careerObjective: "",
+        workExperience: "",
+        preferredCountries: [],
+        industryInterests: [],
+        careerLevel: "",
+      },
+      preferences: {
+        budgetRange: "",
+        startDate: "",
+        scholarshipInterest: false,
+        accommodationPreference: "",
+        communicationPreferences: [],
+        studyMode: "",
+        locationPreference: "",
+      },
+    }
+    return baseDefaults[sectionId] || {}
+  }
+
+  // Merge data with safe defaults
+  const safeData = {
+    ...getSafeDefaults(section.id),
+    ...data
+  }
+
   const form = useForm({
     resolver: zodResolver(section.schema),
-    defaultValues: data,
+    defaultValues: safeData,
     mode: "onChange"
   })
 
   useEffect(() => {
-    // Ensure all form fields have proper default values to prevent controlled/uncontrolled issues
-    const safeData = {
-      ...data
-    }
-    
-    // Ensure arrays are always arrays
-    if (section.id === "goals") {
-      safeData.targetPrograms = data.targetPrograms || []
-      safeData.preferredCountries = data.preferredCountries || []
-      safeData.industryInterests = data.industryInterests || []
-    }
-    
-    if (section.id === "preferences") {
-      safeData.communicationPreferences = data.communicationPreferences || []
-      safeData.scholarshipInterest = data.scholarshipInterest || false
-    }
-    
-    // Ensure strings are never undefined
-    Object.keys(safeData).forEach(key => {
-      if (typeof safeData[key] === 'undefined') {
-        safeData[key] = ""
-      }
-    })
-    
+    // Reset form with safe data whenever data changes
     form.reset(safeData)
   }, [data, form, section.id])
 

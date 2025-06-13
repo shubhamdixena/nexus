@@ -10,6 +10,36 @@ export interface User {
   role?: string | null
 }
 
+// Pagination interface
+export interface PaginatedResponse<T> {
+  data: T[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    hasNext: boolean
+    hasPrev: boolean
+  }
+  success: boolean
+}
+
+// Filter interfaces
+export interface UniversityFilters {
+  country?: string
+  program?: string
+  ranking?: string
+  type?: string
+}
+
+export interface ScholarshipFilters {
+  type?: string
+  country?: string
+  coverage?: string
+  fieldOfStudy?: string
+  degreeLevel?: string
+}
+
 export interface University {
   id: string
   name: string
@@ -20,6 +50,7 @@ export interface University {
   description?: string | null
   website?: string | null
   programs_offered?: string[] | null
+  programs?: string[] | null // Alternative field name for compatibility
   created_at: string
   updated_at: string
 }
@@ -33,43 +64,117 @@ export interface MBASchool {
   type?: string | null
   duration?: string | null
   tuition?: string | null
+  tuition_per_year?: string | null
   total_cost?: string | null
   description?: string | null
   website?: string | null
+  
+  // Application & Admission Info
   application_deadline?: string | null
+  application_deadlines?: string | null  // Multiple application rounds
+  application_fee?: string | null
+  gmat_gre_waiver_available?: boolean | null
+  admissions_rounds?: string | null
+  
+  // Class & Student Info  
   class_size?: number | null
-  average_gmat?: number | null
+  women_percentage?: number | null
+  class_profile?: string | null
+  international_students?: string | null
+  
+  // Test Scores & Academic Requirements
+  avg_gmat?: number | null
+  mean_gmat?: number | null
   gmat_range?: string | null
-  average_gpa?: number | null
+  avg_gpa?: number | null
+  mean_gpa?: number | null
+  avg_gre?: number | null
+  avg_work_exp?: number | null
+  avg_work_exp_years?: number | null
+  work_experience_requirement?: string | null
+  application_requirements?: string | null
+  
+  // Rankings
+  qs_rank?: number | null
+  qs_mba_rank?: number | null
+  ft_rank?: number | null
+  ft_global_mba_rank?: number | null
+  bloomberg_rank?: number | null
+  bloomberg_mba_rank?: number | null
+  
+  // Employment & Career Info
   acceptance_rate?: number | null
   employment_rate?: number | null
-  average_salary?: string | null
+  employment_in_3_months?: number | null
+  employment_in_3_months_percent?: number | null
+  avg_starting_salary?: string | null
+  weighted_salary?: string | null
+  salary_increase?: number | null
+  top_industries?: string | null
+  top_hiring_companies?: string | null
+  career_services?: string | null
+  
+  // Alumni & Network
+  alumni_network?: string | null
+  alumni_network_strength?: string | null
+  alumni_support?: string | null
+  notable_alumni?: string | null
+  
+  // Program Details
+  start_date?: string | null
+  format?: string | null
+  specializations?: string[] | string | null
+  teaching_methodology?: string | null
+  global_focus?: string | null
+  faculty_size?: string | null
+  research_centers?: string | null
+  campus_life?: string | null
+  
+  // Status & Classification
   status?: string | null
+  classification?: string | null
+  tier?: string | null
+  category?: string | null // Keep for backward compatibility
+  
+  // Timestamps
   created_at: string
   updated_at: string
+  
+  // Note: university_id is now optional and for reference only (no foreign key)
+  university_id?: string | null
 }
 
 export interface Scholarship {
   id: string
-  name: string
+  name: string // Maps to "Scholarship Name" from CSV
+  host_country: string // Maps to "Host Country" from CSV
+  host_organization: string // Maps to "Host Organization" from CSV  
+  level_of_study: string // Maps to "Level of Study" from CSV
+  deadline: string // Maps to "Latest Deadline (Approx.)" from CSV
+  eligibility_criteria: string // Maps to "Eligibility Criteria (Key Points)" from CSV - HTML formatted
+  benefits: string // Maps to "Benefits (Key Points)" from CSV - HTML formatted
+  fully_funded: string // Maps to "Fully Funded?" from CSV
+  official_url: string // Maps to "Official URL" from CSV
+  
+  // Legacy fields for backward compatibility
   description?: string | null
   provider?: string | null
   amount?: string | null
   eligibility?: string | null
-  deadline?: string | null
   application_url?: string | null
   field_of_study?: string[] | null
   degree_level?: string[] | null
   countries?: string[] | null
-  benefits?: string | null
   status?: string | null
   created_at: string
   updated_at: string
 }
 
+// Updated Application interface to support both university and MBA school applications
 export interface Application {
   id: string
   user_id: string
+  // Either university_id OR mba_school_id (never both)
   university_id?: string | null
   mba_school_id?: string | null
   program_name: string
@@ -83,6 +188,17 @@ export interface Application {
   student_name?: string
   email?: string
   school?: string
+  // Helper field to determine application type
+  application_type?: 'university' | 'mba_school'
+}
+
+// Type guards for application types
+export function isUniversityApplication(app: Application): app is Application & { university_id: string } {
+  return app.university_id !== null && app.university_id !== undefined
+}
+
+export function isMBASchoolApplication(app: Application): app is Application & { mba_school_id: string } {
+  return app.mba_school_id !== null && app.mba_school_id !== undefined
 }
 
 export interface Document {
@@ -96,4 +212,54 @@ export interface Document {
   status: string
   uploaded_at: string
   updated_at: string
+}
+
+// Data Correction System Types
+export interface DataCorrectionReport {
+  id: string
+  reporter_id: string
+  data_type: 'university' | 'mba_school' | 'scholarship' | 'deadline' | 'test_info' | 'sop' | 'general'
+  data_id?: string | null
+  data_table?: string | null
+  issue_type: 'incorrect_info' | 'outdated_info' | 'missing_info' | 'broken_link' | 'wrong_deadline' | 'other'
+  field_name?: string | null
+  current_value?: string | null
+  suggested_value?: string | null
+  description: string
+  evidence_urls?: string[] | null
+  additional_notes?: string | null
+  status: 'pending' | 'under_review' | 'approved' | 'rejected' | 'implemented' | 'duplicate'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  reviewed_by?: string | null
+  reviewed_at?: string | null
+  admin_notes?: string | null
+  implementation_notes?: string | null
+  created_at: string
+  updated_at: string
+  // Joined fields for display
+  reporter_name?: string
+  reviewer_name?: string
+}
+
+export interface DataCorrectionAnalytics {
+  id: string
+  data_type: string
+  data_table?: string | null
+  field_name?: string | null
+  issue_type: string
+  report_count: number
+  last_reported: string
+}
+
+export interface DataCorrectionHistory {
+  id: string
+  correction_id: string
+  action: 'submitted' | 'reviewed' | 'approved' | 'rejected' | 'implemented' | 'reopened'
+  performed_by: string
+  notes?: string | null
+  old_status?: string | null
+  new_status?: string | null
+  created_at: string
+  // Joined fields
+  performer_name?: string
 }

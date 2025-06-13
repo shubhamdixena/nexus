@@ -6,7 +6,10 @@ import type {
   UniversityFilters, 
   ScholarshipFilters 
 } from "@/types"
-import { supabase } from "@/lib/supabaseClient"
+import { createClient } from "@/lib/supabaseClient"
+
+// Create a client instance for real-time operations
+const supabase = createClient()
 
 // Real-time University Service using direct Supabase client
 export class UniversityRealtimeService {
@@ -100,13 +103,14 @@ export class UniversityRealtimeService {
   }
 
   static subscribeToUniversities(callback: (universities: University[]) => void) {
-    return supabase
+    const client = createClient()
+    return client
       .channel('universities_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'universities' },
         async () => {
           // Fetch updated data
-          const { data } = await supabase
+          const { data } = await client
             .from('universities')
             .select('*')
             .order('name', { ascending: true })

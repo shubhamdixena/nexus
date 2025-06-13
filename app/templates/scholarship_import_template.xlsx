@@ -1,0 +1,163 @@
+import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Font, Alignment
+from openpyxl.worksheet.datavalidation import DataValidation
+
+def create_import_template():
+    # Create a new workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Scholarship Import Template"
+
+    # Define headers
+    headers = [
+        "name*",
+        "description*",
+        "amount*",
+        "deadline*",
+        "eligibility_criteria*",
+        "application_process*",
+        "status*",
+        "organization_id*",
+        "category_id*",
+        "country_id*",
+        "education_level_id*",
+        "gender_id*",
+        "age_min",
+        "age_max",
+        "gpa_min",
+        "gpa_max",
+        "income_min",
+        "income_max",
+        "is_merit_based",
+        "is_need_based",
+        "is_athletic",
+        "is_artistic",
+        "is_academic",
+        "is_minority",
+        "is_international",
+        "is_undergraduate",
+        "is_graduate",
+        "is_phd",
+        "is_postdoc",
+        "is_full_ride",
+        "is_partial",
+        "is_renewable",
+        "renewal_criteria",
+        "application_url",
+        "contact_email",
+        "contact_phone",
+        "contact_address",
+        "notes"
+    ]
+
+    # Add headers to worksheet
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+
+    # Add data validation
+    # Status validation
+    status_validation = DataValidation(type="list", formula1='"active,inactive"')
+    ws.add_data_validation(status_validation)
+    status_validation.add(f"D2:D1000")
+
+    # Boolean fields validation
+    bool_validation = DataValidation(type="list", formula1='"TRUE,FALSE"')
+    ws.add_data_validation(bool_validation)
+    for col in range(19, 33):  # Columns S through AG
+        bool_validation.add(f"{chr(64 + col)}2:{chr(64 + col)}1000")
+
+    # Add example row
+    example_data = [
+        "Example Scholarship",
+        "This is an example scholarship description",
+        "10000.00",
+        "2024-12-31",
+        "Must be a full-time student",
+        "Submit online application with transcripts",
+        "active",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "18",
+        "25",
+        "3.0",
+        "4.0",
+        "0",
+        "50000",
+        "TRUE",
+        "FALSE",
+        "FALSE",
+        "FALSE",
+        "TRUE",
+        "FALSE",
+        "FALSE",
+        "TRUE",
+        "FALSE",
+        "FALSE",
+        "FALSE",
+        "FALSE",
+        "TRUE",
+        "FALSE",
+        "Maintain 3.5 GPA",
+        "https://example.com/apply",
+        "contact@example.com",
+        "123-456-7890",
+        "123 Main St, City, State",
+        "Additional notes here"
+    ]
+
+    for col, value in enumerate(example_data, 1):
+        cell = ws.cell(row=2, column=col, value=value)
+        cell.font = Font(italic=True, color="808080")
+
+    # Add instructions
+    ws.insert_rows(1, 3)
+    ws.merge_cells('A1:AL1')
+    ws['A1'] = "SCHOLARSHIP IMPORT TEMPLATE"
+    ws['A1'].font = Font(bold=True, size=14)
+    ws['A1'].alignment = Alignment(horizontal="center")
+
+    ws.merge_cells('A2:AL2')
+    ws['A2'] = "Instructions:"
+    ws['A2'].font = Font(bold=True)
+
+    instructions = [
+        "1. Fields marked with * are required",
+        "2. Amount should be a positive number",
+        "3. Deadline must be a future date",
+        "4. Status must be either 'active' or 'inactive'",
+        "5. Boolean fields must be TRUE or FALSE",
+        "6. IDs must reference existing records in the database",
+        "7. GPA values must be between 0 and 4.0",
+        "8. Age and income values must be positive numbers",
+        "9. Email addresses must be valid",
+        "10. URLs must start with http:// or https://"
+    ]
+
+    for i, instruction in enumerate(instructions, 3):
+        ws[f'A{i}'] = instruction
+
+    # Adjust column widths
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column].width = adjusted_width
+
+    # Save the template
+    wb.save("scholarship_import_template.xlsx")
+
+if __name__ == "__main__":
+    create_import_template() 

@@ -1,12 +1,16 @@
 // Optimized Realtime Services with Memory Leak Prevention
-import { supabase } from "@/lib/supabaseClient"
+import { createClient } from "@/lib/supabaseClient"
 import type { 
   University, 
   Scholarship, 
+  MBASchool,
   PaginatedResponse, 
   UniversityFilters, 
   ScholarshipFilters 
 } from "@/types"
+
+// Create a client instance for real-time operations
+const supabase = createClient()
 
 // Connection pool to prevent subscription leaks
 class SubscriptionManager {
@@ -79,60 +83,8 @@ class QueryBuilder {
   }
 }
 
-// Types for the services (add these to your types file if needed)
-export interface MBASchool {
-  id: string
-  university_id?: string
-  name: string
-  type: string
-  location: string
-  country: string
-  ranking: number
-  category: string
-  duration: string
-  tuition: string
-  total_cost: string
-  status: 'active' | 'inactive' | 'pending'
-  description: string
-  application_deadline: string
-  class_size: number
-  avg_gmat: number
-  gmat_range: string
-  avg_gpa: number
-  acceptance_rate: string
-  employment_rate: number
-  avg_starting_salary: string
-  top_industries: string
-  start_date: string
-  format: string
-  year1_courses: string
-  year2_courses: string
-  teaching_methodology: string
-  global_focus: string
-  faculty_size: string
-  research_centers: string
-  application_requirements: string
-  work_experience_requirement: string
-  application_components: string
-  class_profile: string
-  international_students: string
-  alumni_network: string
-  campus_life: string
-  website: string
-  notable_alumni: string
-  career_services: string
-  student_clubs: string
-  housing_options: string
-  scholarships_available: string
-  interview_process: string
-  top_hiring_companies: string
-  specializations: string[]
-  top_recruiters: string[]
-  program_duration: string
-  tuition_per_year: string
-  created_at?: string
-  updated_at?: string
-}
+// Import MBASchool type from types instead of redefining
+// (This interface is now imported from @/types)
 
 export interface User {
   id: string
@@ -321,7 +273,9 @@ export class MBASchoolRealtimeService {
     // Prevent cache from growing too large
     if (this.cache.size > 50) {
       const firstKey = this.cache.keys().next().value
-      this.cache.delete(firstKey)
+      if (firstKey) {
+        this.cache.delete(firstKey)
+      }
     }
     this.cache.set(key, { data, timestamp: Date.now() })
   }
@@ -421,7 +375,8 @@ export class MBASchoolRealtimeService {
   }
 
   static subscribeToMBASchools(callback: (schools: MBASchool[]) => void) {
-    const subscription = supabase
+    const client = createClient()
+    const subscription = client
       .channel('mba_schools_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'mba_schools' },
@@ -430,7 +385,7 @@ export class MBASchoolRealtimeService {
           this.cache.clear()
           
           try {
-            const { data } = await supabase
+            const { data } = await client
               .from('mba_schools')
               .select('*')
               .order('ranking', { ascending: true })
@@ -1010,33 +965,165 @@ export class SOPRealtimeService {
       throw error
     }
   }
+
+  static async bulkUpdateSOPStatus(ids: string[], status: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('sops')
+        .update({ status, updated_at: new Date().toISOString() })
+        .in('id', ids)
+
+      if (error) throw new Error(`Database error: ${error.message}`)
+    } catch (error) {
+      console.error('Error bulk updating SOP status:', error)
+      throw error
+    }
+  }
+
+  static subscribeToSOPs(callback: (sops: SOP[]) => void) {
+    const client = createClient()
+    const subscription = client
+      .channel('sops_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'sops' },
+        async () => {
+          try {
+            const { data } = await client
+              .from('sops')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(100)
+            
+            if (data) callback(data)
+          } catch (error) {
+            console.error('SOP subscription callback error:', error)
+          }
+        }
+      )
+      .subscribe()
+
+    return SubscriptionManager.subscribe('sops', subscription)
+  }
 }
 
-// System Settings Realtime Service
+// University Realtime Service
 export class SystemSettingsRealtimeService {
-  static async getSystemSettings(params: FilterParams = {}): Promise<PaginatedResponse<SystemSettings>> {
+  static async getSettingsByCategory(category?: string): Promise<SystemSettings[]> {
     try {
-      const { page = 1, limit = 50, search, sortBy = 'category', sortOrder = 'asc' } = params
+      let query = supabase
+        .from('system_settings')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('key', { ascending: true })
+
+      if (category) {
+        query = query.eq('category', category)
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching system settings:', error)
+      throw error
+    }
+  }
+
+  static async updateSystemSetting(id: string, updates: Partial<SystemSettings>): Promise<SystemSettings> {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating system setting:', error)
+      throw error
+    }
+  }
+
+  static async createSystemSetting(setting: Partial<SystemSettings>): Promise<SystemSettings> {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .insert(setting)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating system setting:', error)
+      throw error
+    }
+  }
+
+  static async deleteSystemSetting(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting system setting:', error)
+      throw error
+    }
+  }
+
+  static subscribeToSystemSettings(callback: (settings: SystemSettings[]) => void) {
+    const subscription = supabase
+      .channel('system_settings_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'system_settings' }, 
+        async () => {
+          try {
+            const settings = await this.getSettingsByCategory()
+            callback(settings)
+          } catch (error) {
+            console.error('Error in system settings subscription:', error)
+          }
+        }
+      )
+      .subscribe()
+
+    return SubscriptionManager.subscribe('system_settings', subscription)
+  }
+
+  static cleanup() {
+    SubscriptionManager.unsubscribe('system_settings')
+  }
+}
+
+export class UniversityRealtimeService {
+  static async getUniversities(params: FilterParams = {}): Promise<PaginatedResponse<University>> {
+    try {
+      const { page = 1, limit = 10, search, sortBy = 'name', sortOrder = 'asc' } = params
       const offset = (page - 1) * limit
 
       let query = supabase
-        .from('system_settings')
+        .from('universities')
         .select('*', { count: 'exact' })
 
       // Apply search filter
       if (search?.trim()) {
-        query = query.or(`key.ilike.%${search}%,description.ilike.%${search}%,value.ilike.%${search}%`)
+        query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
       }
 
       // Apply filters
-      if (params.filters?.category) {
-        query = query.eq('category', params.filters.category)
+      if (params.filters?.country) {
+        query = query.eq('country', params.filters.country)
       }
-      if (params.filters?.is_public !== undefined) {
-        query = query.eq('is_public', params.filters.is_public)
+      if (params.filters?.program) {
+        query = query.contains('programs', [params.filters.program])
       }
 
-      // Apply sorting and pagination
       query = query.order(sortBy, { ascending: sortOrder === 'asc' })
       query = query.range(offset, offset + limit - 1)
 
@@ -1057,138 +1144,56 @@ export class SystemSettingsRealtimeService {
         success: true,
       }
     } catch (error) {
-      console.error('System settings service error:', error)
+      console.error('Universities service error:', error)
       throw error
     }
   }
 
-  static async getSettingsByCategory(): Promise<Record<string, SystemSettings[]>> {
+  static async getUniversityById(id: string): Promise<University | null> {
     try {
       const { data, error } = await supabase
-        .from('system_settings')
+        .from('universities')
         .select('*')
-        .order('category', { ascending: true })
-        .order('key', { ascending: true })
+        .eq('id', id)
+        .single()
 
-      if (error) throw new Error(`Database error: ${error.message}`)
-
-      // Group settings by category
-      const settingsByCategory: Record<string, SystemSettings[]> = {}
-      data?.forEach(setting => {
-        if (!settingsByCategory[setting.category]) {
-          settingsByCategory[setting.category] = []
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null // No data found
         }
-        settingsByCategory[setting.category].push(setting)
-      })
-
-      return settingsByCategory
-    } catch (error) {
-      console.error('Error getting settings by category:', error)
-      throw error
-    }
-  }
-
-  static async createSystemSetting(data: Partial<SystemSettings>): Promise<SystemSettings> {
-    try {
-      const { data: result, error } = await supabase
-        .from('system_settings')
-        .insert([data])
-        .select()
-        .single()
-
-      if (error) throw new Error(`Database error: ${error.message}`)
-      return result
-    } catch (error) {
-      console.error('Error creating system setting:', error)
-      throw error
-    }
-  }
-
-  static async updateSystemSetting(id: string, data: Partial<SystemSettings>): Promise<SystemSettings> {
-    try {
-      const { data: result, error } = await supabase
-        .from('system_settings')
-        .update({ ...data, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw new Error(`Database error: ${error.message}`)
-      return result
-    } catch (error) {
-      console.error('Error updating system setting:', error)
-      throw error
-    }
-  }
-
-  static async deleteSystemSetting(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('system_settings')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw new Error(`Database error: ${error.message}`)
-    } catch (error) {
-      console.error('Error deleting system setting:', error)
-      throw error
-    }
-  }
-
-  static async getSettingByKey(key: string): Promise<SystemSettings | null> {
-    try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .eq('key', key)
-        .single()
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error fetching university by ID:', error)
         throw new Error(`Database error: ${error.message}`)
       }
 
-      return data || null
+      return data
     } catch (error) {
-      console.error('Error getting setting by key:', error)
-      throw error
+      console.error('Error fetching university by ID:', error)
+      return null
     }
   }
 
-  static async updateSettingByKey(key: string, value: string): Promise<SystemSettings> {
-    try {
-      const { data: result, error } = await supabase
-        .from('system_settings')
-        .update({ value, updated_at: new Date().toISOString() })
-        .eq('key', key)
-        .select()
-        .single()
-
-      if (error) throw new Error(`Database error: ${error.message}`)
-      return result
-    } catch (error) {
-      console.error('Error updating setting by key:', error)
-      throw error
-    }
-  }
-
-  static subscribeToSystemSettings(callback: (settings: SystemSettings[]) => void) {
-    return supabase
-      .channel('system_settings_changes')
+  static subscribeToUniversities(callback: (universities: University[]) => void) {
+    const client = createClient()
+    const subscription = client
+      .channel('universities_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'system_settings' },
+        { event: '*', schema: 'public', table: 'universities' },
         async () => {
-          const { data } = await supabase
-            .from('system_settings')
-            .select('*')
-            .order('category', { ascending: true })
-            .order('key', { ascending: true })
-          
-          if (data) callback(data)
+          try {
+            const { data } = await client
+              .from('universities')
+              .select('*')
+              .order('name', { ascending: true })
+              .limit(100)
+            
+            if (data) callback(data)
+          } catch (error) {
+            console.error('University subscription callback error:', error)
+          }
         }
       )
       .subscribe()
+
+    return SubscriptionManager.subscribe('universities', subscription)
   }
 }
-
-// Re-export the existing UniversityRealtimeService from database-service
-export { UniversityRealtimeService } from './database-service'

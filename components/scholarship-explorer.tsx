@@ -29,19 +29,21 @@ import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { useBookmarks } from "@/hooks/use-bookmarks"
+import { ReportDataButton } from "@/components/report-data-button"
 
 export function ScholarshipExplorer() {
   const [showFilters, setShowFilters] = useState(false)
   const [amountRange, setAmountRange] = useState([0, 100000])
-  const [savedScholarships, setSavedScholarships] = useState<number[]>([])
 
-  const toggleSaved = (id: number) => {
-    if (savedScholarships.includes(id)) {
-      setSavedScholarships(savedScholarships.filter((scholarshipId) => scholarshipId !== id))
-    } else {
-      setSavedScholarships([...savedScholarships, id])
-    }
-  }
+  // Use bookmark service instead of local state
+  const {
+    bookmarkedItems: savedScholarships,
+    isBookmarked,
+    toggleBookmark,
+    loading: bookmarkLoading,
+    error: bookmarkError
+  } = useBookmarks('scholarship')
 
   return (
     <div className="container mx-auto p-4 md:p-6">
@@ -179,8 +181,8 @@ export function ScholarshipExplorer() {
               <ScholarshipCard
                 key={scholarship.id}
                 scholarship={scholarship}
-                isSaved={savedScholarships.includes(scholarship.id)}
-                onToggleSave={() => toggleSaved(scholarship.id)}
+                isSaved={savedScholarships.includes(scholarship.id.toString())}
+                onToggleSave={() => toggleBookmark(scholarship.id.toString())}
               />
             ))}
           </div>
@@ -188,13 +190,13 @@ export function ScholarshipExplorer() {
         <TabsContent value="saved" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {scholarships
-              .filter((scholarship) => savedScholarships.includes(scholarship.id))
+              .filter((scholarship) => savedScholarships.includes(scholarship.id.toString()))
               .map((scholarship) => (
                 <ScholarshipCard
                   key={scholarship.id}
                   scholarship={scholarship}
                   isSaved={true}
-                  onToggleSave={() => toggleSaved(scholarship.id)}
+                  onToggleSave={() => toggleBookmark(scholarship.id.toString())}
                 />
               ))}
           </div>
@@ -213,8 +215,8 @@ export function ScholarshipExplorer() {
                 <ScholarshipCard
                   key={scholarship.id}
                   scholarship={scholarship}
-                  isSaved={savedScholarships.includes(scholarship.id)}
-                  onToggleSave={() => toggleSaved(scholarship.id)}
+                  isSaved={savedScholarships.includes(scholarship.id.toString())}
+                  onToggleSave={() => toggleBookmark(scholarship.id.toString())}
                 />
               ))}
           </div>
@@ -332,6 +334,14 @@ function ScholarshipCard({
                     {isSaved ? <BookmarkCheck className="mr-2 h-4 w-4" /> : <Bookmark className="mr-2 h-4 w-4" />}
                     {isSaved ? "Saved" : "Save Scholarship"}
                   </Button>
+                  <ReportDataButton 
+                    dataType="scholarship"
+                    dataId={scholarship.id.toString()}
+                    dataTable="scholarships"
+                    currentData={scholarship}
+                    variant="outline"
+                    size="sm"
+                  />
                 </div>
               </div>
             </ScrollArea>

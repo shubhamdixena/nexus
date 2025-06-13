@@ -19,11 +19,11 @@ import { UserRealtimeService, Message, User } from '@/lib/realtime-services'
 import { RequirePermission } from './permission-guard'
 
 export const AdminUserManagement = React.memo(() => {
-  // State with proper types
+  // State with proper types and initialization
   const [users, setUsers] = useState<User[]>([])
   const [messages, setMessages] = useState<Message[]>([])
-  const [activityLogs, setActivityLogs] = useState<any[]>([]) // Add missing state
-  const [segments, setSegments] = useState<any[]>([]) // Add missing state
+  const [activityLogs, setActivityLogs] = useState<any[]>([])
+  const [segments, setSegments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -60,18 +60,22 @@ export const AdminUserManagement = React.memo(() => {
       
       // Load users
       const usersResponse = await UserRealtimeService.getUsers()
-      setUsers(usersResponse || [])
+      setUsers(Array.isArray(usersResponse?.data) ? usersResponse.data : [])
       
-      // Load messages - using a placeholder since getMessages doesn't exist
-      // TODO: Implement actual message loading when the method is available
+      // Load messages - using empty array as fallback
       setMessages([])
       
-      // Load activity logs and segments
+      // Load activity logs and segments - using empty arrays as fallback
       setActivityLogs([])
       setSegments([])
       
     } catch (error) {
       console.error('Error loading admin data:', error)
+      // Ensure all states are arrays
+      setUsers([])
+      setMessages([])
+      setActivityLogs([])
+      setSegments([])
     } finally {
       setLoading(false)
     }
@@ -242,7 +246,7 @@ export const AdminUserManagement = React.memo(() => {
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users.length}</div>
+              <div className="text-2xl font-bold">{Array.isArray(users) ? users.length : 0}</div>
             </CardContent>
           </Card>
           <Card>
@@ -250,7 +254,7 @@ export const AdminUserManagement = React.memo(() => {
               <CardTitle className="text-sm font-medium">Active Users</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users.filter(u => u.status === 'active').length}</div>
+              <div className="text-2xl font-bold">{Array.isArray(users) ? users.filter(u => u.status === 'active').length : 0}</div>
             </CardContent>
           </Card>
           <Card>
@@ -258,12 +262,12 @@ export const AdminUserManagement = React.memo(() => {
               <CardTitle className="text-sm font-medium">New This Month</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users.filter(u => {
+              <div className="text-2xl font-bold">{Array.isArray(users) ? users.filter(u => {
                 const createdAt = new Date(u.created_at || '')
                 const oneMonthAgo = new Date()
                 oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
                 return createdAt > oneMonthAgo
-              }).length}</div>
+              }).length : 0}</div>
             </CardContent>
           </Card>
           <Card>
@@ -271,7 +275,7 @@ export const AdminUserManagement = React.memo(() => {
               <CardTitle className="text-sm font-medium">User Segments</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{segments.length}</div>
+              <div className="text-2xl font-bold">{Array.isArray(segments) ? segments.length : 0}</div>
             </CardContent>
           </Card>
         </div>
@@ -335,7 +339,7 @@ export const AdminUserManagement = React.memo(() => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.length > 0 ? (
+                  {Array.isArray(users) && users.length > 0 ? (
                     users.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name}</TableCell>
@@ -440,7 +444,7 @@ export const AdminUserManagement = React.memo(() => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {activityLogs.length > 0 ? (
+                    {Array.isArray(activityLogs) && activityLogs.length > 0 ? (
                       activityLogs.map((log) => (
                         <TableRow key={log.id}>
                           <TableCell>{log.user_name}</TableCell>
@@ -482,7 +486,7 @@ export const AdminUserManagement = React.memo(() => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {segments.length > 0 ? (
+                    {Array.isArray(segments) && segments.length > 0 ? (
                       segments.map((segment) => (
                         <TableRow key={segment.id}>
                           <TableCell className="font-medium">{segment.name}</TableCell>
@@ -541,10 +545,12 @@ export const AdminUserManagement = React.memo(() => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {messages.length > 0 ? (
+                  {Array.isArray(messages) && messages.length > 0 ? (
                     messages.map((message) => (
                       <TableRow key={message.id}>
                         <TableCell className="font-medium">{message.subject}</TableCell>
+                        <TableCell>—</TableCell>
+                        <TableCell>—</TableCell>
                         <TableCell>—</TableCell>
                         <TableCell>—</TableCell>
                         <TableCell>—</TableCell>

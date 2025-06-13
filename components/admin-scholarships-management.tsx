@@ -23,8 +23,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 
 // Import Supabase realtime services
-import { ScholarshipRealtimeService, type Scholarship } from "@/lib/realtime-services"
+import { ScholarshipRealtimeService } from "@/lib/realtime-services"
 import { useToast } from "@/hooks/use-toast"
+import type { Scholarship } from "@/types"
 
 // Add the import for BulkDataOperations at the top of the file
 import { BulkDataOperations } from "./bulk-data-operations"
@@ -32,25 +33,18 @@ import { BulkDataOperations } from "./bulk-data-operations"
 // Template for bulk import
 const scholarshipImportTemplate: Partial<Scholarship>[] = [
 	{
-		title: "Example Scholarship",
-		provider: "Example Organization",
-		organization: "Example Organization",
-		country: "Country",
-		amount: "$10,000",
-		deadline: "2025-01-01",
-		degree: "Masters",
-		field: "Any",
-		status: "active",
-		apply_url: "https://example.com/apply",
-		official_url: "https://example.com/scholarship",
-		scholarship_type: "merit",
-		eligibility_criteria: ["Academic Excellence"],
-		requirements: ["Academic Transcripts"],
-		coverage: "partial",
-		renewable: false,
-		target_countries: ["Country"],
-		target_programs: ["Masters"],
-		description: "Example scholarship description",
+		name: "Example Scholarship Name",
+		provider: "Example University", 
+		description: "Description of the scholarship program",
+		amount: "$50,000",
+		eligibility: "Open to international students with strong academic record",
+		deadline: "2024-12-31",
+		application_url: "https://example.com/apply",
+		field_of_study: ["Engineering"],
+		degree_level: ["Masters"],
+		countries: ["United States"],
+		benefits: "Full tuition, monthly stipend, health insurance",
+		status: "active"
 	},
 ]
 
@@ -121,25 +115,18 @@ export function AdminScholarshipsManagement() {
 			const formData = new FormData(form)
 
 			const newScholarshipData = {
-				title: formData.get("title") as string,
-				provider: formData.get("organization") as string,
-				organization: formData.get("organization") as string,
-				country: formData.get("country") as string,
+				name: formData.get("name") as string,
+				provider: formData.get("provider") as string,
+				description: formData.get("description") as string || "",
 				amount: formData.get("amount") as string,
 				deadline: formData.get("deadline") as string,
-				degree: formData.get("degree") as string,
-				field: formData.get("field") as string,
-				apply_url: formData.get("applyUrl") as string,
-				official_url: formData.get("officialUrl") as string,
-				scholarship_type: formData.get("scholarshipType") as string || "merit",
-				status: "active" as const,
-				description: formData.get("description") as string || "",
-				eligibility_criteria: [],
-				requirements: [],
-				coverage: formData.get("coverage") as string || "partial",
-				renewable: formData.get("renewable") === "true",
-				target_countries: [formData.get("country") as string],
-				target_programs: [formData.get("degree") as string],
+				eligibility: formData.get("eligibility") as string,
+				application_url: formData.get("applicationUrl") as string,
+				field_of_study: [formData.get("fieldOfStudy") as string],
+				degree_level: [formData.get("degreeLevel") as string],
+				countries: [formData.get("country") as string],
+				benefits: formData.get("benefits") as string,
+				status: "active" as const
 			}
 
 			await ScholarshipRealtimeService.createScholarship(newScholarshipData)
@@ -151,7 +138,7 @@ export function AdminScholarshipsManagement() {
 
 			toast({
 				title: "Scholarship Added",
-				description: `${newScholarshipData.title} has been successfully added.`,
+				description: `${newScholarshipData.name} has been successfully added.`,
 			})
 		} catch (error) {
 			console.error("Error creating scholarship:", error)
@@ -178,21 +165,18 @@ export function AdminScholarshipsManagement() {
 
 			const updatedScholarshipData = {
 				...selectedScholarship,
-				title: formData.get("title") as string,
-				provider: formData.get("organization") as string,
-				organization: formData.get("organization") as string,
-				country: formData.get("country") as string,
+				name: formData.get("name") as string,
+				provider: formData.get("provider") as string,
+				description: formData.get("description") as string || "",
 				amount: formData.get("amount") as string,
 				deadline: formData.get("deadline") as string,
-				degree: formData.get("degree") as string,
-				field: formData.get("field") as string,
-				apply_url: formData.get("applyUrl") as string,
-				official_url: formData.get("officialUrl") as string,
-				scholarship_type: formData.get("scholarshipType") as string || "merit",
+				eligibility: formData.get("eligibility") as string,
+				application_url: formData.get("applicationUrl") as string,
+				field_of_study: [formData.get("fieldOfStudy") as string],
+				degree_level: [formData.get("degreeLevel") as string],
+				countries: [formData.get("country") as string],
+				benefits: formData.get("benefits") as string,
 				status: formData.get("status") as "active" | "inactive",
-				description: formData.get("description") as string || "",
-				coverage: formData.get("coverage") as string || "partial",
-				renewable: formData.get("renewable") === "true",
 			}
 
 			await ScholarshipRealtimeService.updateScholarship(selectedScholarship.id, updatedScholarshipData)
@@ -205,7 +189,7 @@ export function AdminScholarshipsManagement() {
 
 			toast({
 				title: "Scholarship Updated",
-				description: `${updatedScholarshipData.title} has been successfully updated.`,
+				description: `${updatedScholarshipData.name} has been successfully updated.`,
 			})
 		} catch (error) {
 			console.error("Error updating scholarship:", error)
@@ -228,7 +212,7 @@ export function AdminScholarshipsManagement() {
 		try {
 			await ScholarshipRealtimeService.deleteScholarship(selectedScholarship.id)
 
-			const scholarshipName = selectedScholarship.title
+			const scholarshipName = selectedScholarship.name
 
 			// Reload data to reflect deletion
 			await loadScholarships(currentPage, searchTerm)
@@ -259,8 +243,8 @@ export function AdminScholarshipsManagement() {
 			const validationErrors: string[] = []
 
 			importedScholarships.forEach((scholarship, index) => {
-				if (!scholarship.title) validationErrors.push(`Row ${index + 1}: Scholarship title is required`)
-				if (!scholarship.organization) validationErrors.push(`Row ${index + 1}: Organization is required`)
+				if (!scholarship.name) validationErrors.push(`Row ${index + 1}: Scholarship name is required`)
+				if (!scholarship.provider) validationErrors.push(`Row ${index + 1}: Provider is required`)
 				if (!scholarship.country) validationErrors.push(`Row ${index + 1}: Country is required`)
 				if (!scholarship.amount) validationErrors.push(`Row ${index + 1}: Amount is required`)
 			})
@@ -280,7 +264,7 @@ export function AdminScholarshipsManagement() {
 				await ScholarshipRealtimeService.createScholarship({
 					...scholarshipData,
 					status: scholarshipData.status || "active",
-					provider: scholarshipData.organization || "",
+					provider: scholarshipData.provider || "",
 					eligibility_criteria: scholarshipData.eligibility_criteria || [],
 					requirements: scholarshipData.requirements || [],
 					target_countries: scholarshipData.target_countries || [],
@@ -344,8 +328,8 @@ export function AdminScholarshipsManagement() {
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>Title</TableHead>
-									<TableHead>Organization</TableHead>
+									<TableHead>Name</TableHead>
+									<TableHead>Provider</TableHead>
 									<TableHead>Country</TableHead>
 									<TableHead>Amount</TableHead>
 									<TableHead>Deadline</TableHead>
@@ -368,8 +352,8 @@ export function AdminScholarshipsManagement() {
 								) : filteredScholarships.length > 0 ? (
 									filteredScholarships.map((scholarship) => (
 										<TableRow key={scholarship.id}>
-											<TableCell className="font-medium">{scholarship.title}</TableCell>
-											<TableCell>{scholarship.organization}</TableCell>
+											<TableCell className="font-medium">{scholarship.name}</TableCell>
+											<TableCell>{scholarship.provider}</TableCell>
 											<TableCell>{scholarship.country}</TableCell>
 											<TableCell>{scholarship.amount}</TableCell>
 											<TableCell>{new Date(scholarship.deadline).toLocaleDateString()}</TableCell>
@@ -462,12 +446,12 @@ export function AdminScholarshipsManagement() {
 						<div className="grid gap-4 py-4">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div className="grid gap-2">
-									<Label htmlFor="title">Title*</Label>
-									<Input id="title" name="title" required />
+									<Label htmlFor="name">Name*</Label>
+									<Input id="name" name="name" required />
 								</div>
 								<div className="grid gap-2">
-									<Label htmlFor="organization">Organization*</Label>
-									<Input id="organization" name="organization" required />
+									<Label htmlFor="provider">Provider*</Label>
+									<Input id="provider" name="provider" required />
 								</div>
 							</div>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -552,8 +536,8 @@ export function AdminScholarshipsManagement() {
 								<Textarea id="description" name="description" rows={3} />
 							</div>
 							<div className="grid gap-2">
-								<Label htmlFor="applyUrl">Apply URL*</Label>
-								<Input id="applyUrl" name="applyUrl" type="url" required />
+								<Label htmlFor="applicationUrl">Apply URL*</Label>
+								<Input id="applicationUrl" name="applicationUrl" type="url" required />
 							</div>
 							<div className="grid gap-2">
 								<Label htmlFor="officialUrl">Official URL*</Label>
@@ -588,15 +572,15 @@ export function AdminScholarshipsManagement() {
 						<form onSubmit={handleEditScholarship}>
 							<div className="grid gap-4 py-4">
 								<div className="grid gap-2">
-									<Label htmlFor="edit-title">Title</Label>
-									<Input id="edit-title" name="title" defaultValue={selectedScholarship.title} required />
+									<Label htmlFor="edit-name">Name</Label>
+									<Input id="edit-name" name="name" defaultValue={selectedScholarship.name} required />
 								</div>
 								<div className="grid gap-2">
-									<Label htmlFor="edit-organization">Organization</Label>
+									<Label htmlFor="edit-provider">Provider</Label>
 									<Input
-										id="edit-organization"
-										name="organization"
-										defaultValue={selectedScholarship.organization}
+										id="edit-provider"
+										name="provider"
+										defaultValue={selectedScholarship.provider}
 										required
 									/>
 								</div>
@@ -621,12 +605,12 @@ export function AdminScholarshipsManagement() {
 									<Input id="edit-field" name="field" defaultValue={selectedScholarship.field} required />
 								</div>
 								<div className="grid gap-2">
-									<Label htmlFor="edit-applyUrl">Apply URL</Label>
+									<Label htmlFor="edit-applicationUrl">Apply URL</Label>
 									<Input
-										id="edit-applyUrl"
-										name="applyUrl"
+										id="edit-applicationUrl"
+										name="applicationUrl"
 										type="url"
-										defaultValue={selectedScholarship.applyUrl}
+										defaultValue={selectedScholarship.applicationUrl}
 										required
 									/>
 								</div>
@@ -675,9 +659,9 @@ export function AdminScholarshipsManagement() {
 					</DialogHeader>
 					{selectedScholarship && (
 						<div className="py-4">
-							<p className="font-medium">{selectedScholarship.title}</p>
+							<p className="font-medium">{selectedScholarship.name}</p>
 							<p className="text-sm text-muted-foreground">
-								{selectedScholarship.organization}, {selectedScholarship.country}
+								{selectedScholarship.provider}, {selectedScholarship.country}
 							</p>
 						</div>
 					)}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { Bookmark, BookmarkCheck, Filter, MapPin, Search, X, Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import { Bookmark, BookmarkCheck, Filter, MapPin, Search, X, Loader2, AlertCircle, RefreshCw, GitCompare } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -28,16 +28,21 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { MBASchoolRealtimeService, type MBASchool } from "@/lib/realtime-services"
+import { MBASchoolRealtimeService } from "@/lib/realtime-services"
+import type { MBASchool } from "@/types"
+import { useBookmarks } from "@/hooks/use-bookmarks"
+import { MBASchoolComparisonModal } from "@/components/mba-school-comparison-modal"
 
 export function MBASchoolsExplorer() {
   const [showFilters, setShowFilters] = useState(false)
-  const [savedSchools, setSavedSchools] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const [selectedRanking, setSelectedRanking] = useState<string | null>(null)
   const [selectedMBACategory, setSelectedMBACategory] = useState<string | null>(null)
+  const [selectedRankingSystem, setSelectedRankingSystem] = useState<string | null>(null)
+  const [selectedGMATRange, setSelectedGMATRange] = useState<string | null>(null)
+  const [selectedEmploymentRate, setSelectedEmploymentRate] = useState<string | null>(null)
   
   // State for API data
   const [mbaSchools, setMbaSchools] = useState<MBASchool[]>([])
@@ -47,13 +52,22 @@ export function MBASchoolsExplorer() {
   const [retryCount, setRetryCount] = useState(0)
   const [isRetrying, setIsRetrying] = useState(false)
 
+  // Use bookmark service instead of local state
+  const {
+    bookmarkedItems: savedSchools,
+    isBookmarked,
+    toggleBookmark,
+    loading: bookmarkLoading,
+    error: bookmarkError
+  } = useBookmarks('mba_school')
+
   const itemsPerPage = 6
   const maxRetries = 3
 
   // Load MBA schools from API
   useEffect(() => {
     loadMBASchools()
-  }, [currentPage, searchQuery, selectedCountry, selectedRanking, selectedMBACategory])
+  }, [currentPage, searchQuery, selectedCountry, selectedRanking, selectedMBACategory, selectedRankingSystem, selectedGMATRange, selectedEmploymentRate])
 
   const loadMBASchools = useCallback(async (showRetryIndicator = false) => {
     try {
@@ -71,6 +85,9 @@ export function MBASchoolsExplorer() {
         country: selectedCountry || undefined,
         ranking: selectedRanking || undefined,
         category: selectedMBACategory || undefined,
+        rankingSystem: selectedRankingSystem || undefined,
+        gmatRange: selectedGMATRange || undefined,
+        employmentRate: selectedEmploymentRate || undefined,
       }
 
       const response = await MBASchoolRealtimeService.getMBASchools(params)
@@ -95,7 +112,7 @@ export function MBASchoolsExplorer() {
       setLoading(false)
       setIsRetrying(false)
     }
-  }, [currentPage, searchQuery, selectedCountry, selectedRanking, selectedMBACategory, itemsPerPage])
+  }, [currentPage, searchQuery, selectedCountry, selectedRanking, selectedMBACategory, selectedRankingSystem, selectedGMATRange, selectedEmploymentRate, itemsPerPage])
 
   // Auto-retry mechanism with exponential backoff
   const handleRetry = useCallback(async () => {
@@ -106,20 +123,6 @@ export function MBASchoolsExplorer() {
       await loadMBASchools(true)
     }
   }, [retryCount, loadMBASchools, maxRetries])
-
-  const toggleSaved = useCallback((id: string) => {
-    try {
-      setSavedSchools(prev => {
-        if (prev.includes(id)) {
-          return prev.filter((schoolId) => schoolId !== id)
-        } else {
-          return [...prev, id]
-        }
-      })
-    } catch (error) {
-      console.error('Error toggling saved school:', error)
-    }
-  }, [])
 
   // Real-time subscription for updates
   useEffect(() => {
@@ -136,6 +139,9 @@ export function MBASchoolsExplorer() {
     setSelectedCountry(null)
     setSelectedRanking(null)
     setSelectedMBACategory(null)
+    setSelectedRankingSystem(null)
+    setSelectedGMATRange(null)
+    setSelectedEmploymentRate(null)
     setCurrentPage(1)
   }
 
@@ -151,9 +157,9 @@ export function MBASchoolsExplorer() {
   // Get unique countries for filter
   const countries = Array.from(new Set(mbaSchools.map((s) => s.country)))
 
-  // Group MBA schools by category
-  const m7Schools = mbaSchools.filter((s) => s.category === "M7")
-  const t15Schools = mbaSchools.filter((s) => s.category === "T15")
+  // Group MBA schools by classification
+  const m7Schools = mbaSchools.filter((s) => s.classification === "M7")
+  const t15Schools = mbaSchools.filter((s) => s.classification === "T15")
   const savedSchoolsData = mbaSchools.filter((school) => savedSchools.includes(school.id))
 
   // Enhanced error display component
@@ -301,16 +307,32 @@ export function MBASchoolsExplorer() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="ranking">Ranking</label>
+                <label htmlFor="ranking">Ranking Range</label>
                 <Select value={selectedRanking || "any"} onValueChange={(value) => setSelectedRanking(value === "any" ? null : value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select ranking" />
+                    <SelectValue placeholder="Select ranking range" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="any">Any</SelectItem>
                     <SelectItem value="1-10">Top 10</SelectItem>
                     <SelectItem value="11-25">Top 25</SelectItem>
                     <SelectItem value="26-50">Top 50</SelectItem>
+                    <SelectItem value="51-100">Top 51-100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="ranking-system">Ranking System</label>
+                <Select value={selectedRankingSystem || "any"} onValueChange={(value) => setSelectedRankingSystem(value === "any" ? null : value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select ranking system" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="qs">QS Ranking</SelectItem>
+                    <SelectItem value="ft">Financial Times</SelectItem>
+                    <SelectItem value="bloomberg">Bloomberg</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -326,6 +348,39 @@ export function MBASchoolsExplorer() {
                     <SelectItem value="M7">M7 Schools</SelectItem>
                     <SelectItem value="T15">T15 Schools</SelectItem>
                     <SelectItem value="T25">T25 Schools</SelectItem>
+                    <SelectItem value="T50">Top 50 Schools</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="gmat-range">GMAT Score Range</label>
+                <Select value={selectedGMATRange || "any"} onValueChange={(value) => setSelectedGMATRange(value === "any" ? null : value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select GMAT range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="700+">700+</SelectItem>
+                    <SelectItem value="650-700">650-700</SelectItem>
+                    <SelectItem value="600-650">600-650</SelectItem>
+                    <SelectItem value="Below 600">Below 600</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="employment-rate">Employment Rate</label>
+                <Select value={selectedEmploymentRate || "any"} onValueChange={(value) => setSelectedEmploymentRate(value === "any" ? null : value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employment rate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="90+">90%+</SelectItem>
+                    <SelectItem value="80-90">80-90%</SelectItem>
+                    <SelectItem value="70-80">70-80%</SelectItem>
+                    <SelectItem value="Below 70">Below 70%</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -335,18 +390,32 @@ export function MBASchoolsExplorer() {
               <Button variant="outline" onClick={resetFilters}>
                 Reset
               </Button>
+              <Button variant="default" onClick={() => handleFilterChange()}>
+                Apply Filters
+              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
       <Tabs defaultValue="all" className="mb-6">
-        <TabsList>
-          <TabsTrigger value="all">All Schools ({mbaSchools.length})</TabsTrigger>
-          <TabsTrigger value="saved">Saved ({savedSchoolsData.length})</TabsTrigger>
-          <TabsTrigger value="m7">M7 Schools ({m7Schools.length})</TabsTrigger>
-          <TabsTrigger value="t15">T15 Schools ({t15Schools.length})</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between mb-4">
+          <TabsList className="grid grid-cols-4 w-fit">
+            <TabsTrigger value="all">All Schools ({mbaSchools.length})</TabsTrigger>
+            <TabsTrigger value="saved">Saved ({savedSchoolsData.length})</TabsTrigger>
+            <TabsTrigger value="m7">M7 Schools ({m7Schools.length})</TabsTrigger>
+            <TabsTrigger value="t15">T15 Schools ({t15Schools.length})</TabsTrigger>
+          </TabsList>
+          
+          <MBASchoolComparisonModal
+            trigger={
+              <Button variant="outline" size="sm">
+                <GitCompare className="mr-2 h-4 w-4" />
+                Compare Schools
+              </Button>
+            }
+          />
+        </div>
 
         {/* Enhanced tab content with better loading states */}
         <TabsContent value="all" className="mt-4">
@@ -370,7 +439,7 @@ export function MBASchoolsExplorer() {
                     key={school.id}
                     school={school}
                     isSaved={savedSchools.includes(school.id)}
-                    onToggleSave={() => toggleSaved(school.id)}
+                    onToggleSave={() => toggleBookmark(school.id)}
                   />
                 ))}
               </div>
@@ -435,7 +504,7 @@ export function MBASchoolsExplorer() {
                   key={school.id}
                   school={school}
                   isSaved={true}
-                  onToggleSave={() => toggleSaved(school.id)}
+                  onToggleSave={() => toggleBookmark(school.id)}
                 />
               ))}
             </div>
@@ -455,7 +524,7 @@ export function MBASchoolsExplorer() {
                   key={school.id}
                   school={school}
                   isSaved={savedSchools.includes(school.id)}
-                  onToggleSave={() => toggleSaved(school.id)}
+                  onToggleSave={() => toggleBookmark(school.id)}
                 />
               ))}
             </div>
@@ -475,7 +544,7 @@ export function MBASchoolsExplorer() {
                   key={school.id}
                   school={school}
                   isSaved={savedSchools.includes(school.id)}
-                  onToggleSave={() => toggleSaved(school.id)}
+                  onToggleSave={() => toggleBookmark(school.id)}
                 />
               ))}
             </div>
@@ -514,31 +583,50 @@ function MBASchoolCard({
       </CardHeader>
       <CardContent className="pb-3">
         <div className="space-y-3">
-          <div>
-            <span className="text-sm font-medium">Ranking:</span>
-            <span className="ml-1 text-sm text-muted-foreground">#{school.ranking}</span>
-          </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="text-xs text-muted-foreground block">Avg. GMAT</span>
-              <span className="font-medium">{school.avg_gmat || 'N/A'}</span>
+              <span className="text-xs text-muted-foreground block">GMAT Avg</span>
+              <span className="font-medium">{school.mean_gmat || school.avg_gmat || 'N/A'}</span>
             </div>
             <div>
               <span className="text-xs text-muted-foreground block">Class Size</span>
               <span className="font-medium">{school.class_size || 'N/A'}</span>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground block">Acceptance Rate</span>
-              <span className="font-medium">{school.acceptance_rate || 'N/A'}</span>
+              <span className="text-xs text-muted-foreground block">Work Exp Avg</span>
+              <span className="font-medium">{school.avg_work_exp_years ? `${school.avg_work_exp_years} yrs` : school.avg_work_exp || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block">Employment Rate</span>
+              <span className="font-medium">{school.employment_in_3_months_percent ? `${school.employment_in_3_months_percent}%` : school.employment_in_3_months || 'N/A'}</span>
             </div>
             <div>
               <span className="text-xs text-muted-foreground block">Tuition</span>
-              <span className="font-medium">{school.tuition_per_year || 'N/A'}</span>
+              <span className="font-medium text-xs">{school.tuition || school.tuition_per_year || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block">Avg Starting Salary</span>
+              <span className="font-medium text-xs">{school.avg_starting_salary || 'N/A'}</span>
             </div>
           </div>
-          <Badge variant="secondary" className="mt-2">
-            {school.category}
-          </Badge>
+          
+          {/* Program Rankings */}
+          {(school.qs_mba_rank || school.ft_global_mba_rank || school.bloomberg_mba_rank) && (
+            <div className="border-t pt-2 mt-2">
+              <span className="text-xs text-muted-foreground block mb-1">Program Rankings</span>
+              <div className="flex flex-wrap gap-1">
+                {school.qs_mba_rank && (
+                  <Badge variant="outline" className="text-xs">QS #{school.qs_mba_rank}</Badge>
+                )}
+                {school.ft_global_mba_rank && (
+                  <Badge variant="outline" className="text-xs">FT #{school.ft_global_mba_rank}</Badge>
+                )}
+                {school.bloomberg_mba_rank && (
+                  <Badge variant="outline" className="text-xs">Bloomberg #{school.bloomberg_mba_rank}</Badge>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex justify-between border-t pt-3">

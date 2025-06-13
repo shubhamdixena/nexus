@@ -8,6 +8,7 @@ const publicPaths = [
   "/auth/signup", 
   "/auth/error",
   "/auth/callback",
+  "/auth/clear-session",
   "/api/auth"
 ]
 
@@ -90,19 +91,40 @@ export async function middleware(request: NextRequest) {
   )
 
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    // Get authenticated user (secure method)
+    const { data, error: userError } = await supabase.auth.getUser()
+    const user = data?.user
+    
+    if (userError) {
+      console.error("User authentication error in middleware:", userError)
+      // Clear any invalid session and redirect to login
+      const loginUrl = new URL("/auth/login", request.url)
+      loginUrl.searchParams.set("error", "session_invalid")
+      const loginResponse = NextResponse.redirect(loginUrl)
+      
+      // Clear all auth-related cookies
+      loginResponse.cookies.delete('sb-access-token')
+      loginResponse.cookies.delete('sb-refresh-token')
+      
+      return loginResponse
+    }
 
-    // If not authenticated, redirect to login
+    // Check if user exists and is authenticated
     if (!user) {
+      console.log("No authenticated user found, redirecting to login")
       const url = new URL("/auth/login", request.url)
-      
-      // Use the request URL origin for callback instead of hardcoded localhost
       const callbackUrl = new URL(pathname, request.url).toString()
-      
       url.searchParams.set("callbackUrl", callbackUrl)
       return NextResponse.redirect(url)
+    }
+
+    // Verify user email is confirmed
+    if (!user.email_confirmed_at && !user.phone_confirmed_at) {
+      console.log("User email not confirmed, redirecting to login")
+      const loginUrl = new URL("/auth/login", request.url)
+      loginUrl.searchParams.set("error", "email_not_confirmed")
+      loginUrl.searchParams.set("message", "Please check your email and click the confirmation link before logging in.")
+      return NextResponse.redirect(loginUrl)
     }
 
     // Check if user is trying to access admin paths
@@ -116,7 +138,6 @@ export async function middleware(request: NextRequest) {
 
         if (error) {
           console.error("Error checking user role:", error)
-          // Redirect to dashboard if we can't verify admin status
           return NextResponse.redirect(new URL("/", request.url))
         }
 
@@ -138,24 +159,25 @@ export async function middleware(request: NextRequest) {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('profile_completed, profile_completion_percentage')
+        .select('profile_completed, profile_completion_percentage, created_at')
         .eq('id', user.id)
         .single()
 
       if (error) {
         console.error("Error checking profile completion in middleware:", error)
-        // If we can't check profile status, allow access but log the error
+        // If profile doesn't exist, create a basic one and redirect to profile setup
+        if (error.code === 'PGRST116') {
+          console.log("No profile found, redirecting to profile setup")
+          const profileSetupUrl = new URL("/profile-setup", request.url)
+          profileSetupUrl.searchParams.set("required", "true")
+          return NextResponse.redirect(profileSetupUrl)
+        }
         return response
       }
 
-      const isComplete = profile?.profile_completed || (profile?.profile_completion_percentage || 0) >= 80
+      // Profile completion enforcement is disabled - users can access app without completing profile
+      // Analytics logging removed to reduce console noise
       
-      // If profile is not complete and user is not on profile setup page
-      if (!isComplete && !pathname.startsWith('/profile-setup')) {
-        const profileSetupUrl = new URL("/profile-setup", request.url)
-        profileSetupUrl.searchParams.set("required", "true")
-        return NextResponse.redirect(profileSetupUrl)
-      }
     } catch (error) {
       console.error("Unexpected error checking profile completion:", error)
       // Allow access if there's an unexpected error
@@ -163,10 +185,16 @@ export async function middleware(request: NextRequest) {
 
   } catch (authError) {
     console.error("Authentication error in middleware:", authError)
-    // If there's an auth error, redirect to login
-    const url = new URL("/auth/login", request.url)
-    url.searchParams.set("error", "auth_failed")
-    return NextResponse.redirect(url)
+    // Clear session and redirect to login
+    const loginUrl = new URL("/auth/login", request.url)
+    loginUrl.searchParams.set("error", "auth_failed")
+    const loginResponse = NextResponse.redirect(loginUrl)
+    
+    // Clear all auth-related cookies
+    loginResponse.cookies.delete('sb-access-token')
+    loginResponse.cookies.delete('sb-refresh-token')
+    
+    return loginResponse
   }
 
   // Add security headers

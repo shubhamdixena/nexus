@@ -9,13 +9,13 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
+  CalendarDays,
   FileText,
   GraduationCap,
   Home,
   Settings,
   User,
   UserPlus,
-  Code,
 } from "lucide-react"
 
 const links = [
@@ -25,17 +25,11 @@ const links = [
   { name: "Scholarships", href: "/scholarships", icon: BarChart3 },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Timeline", href: "/timeline", icon: Calendar },
+  { name: "NEXUS Calendar", href: "/calendar", icon: CalendarDays },
   { name: "Knowledge Base", href: "/knowledge-base", icon: FileText },
-  { name: "Documentation", href: "/documentation", icon: BookOpen },
   { name: "Profile", href: "/profile", icon: User },
   { name: "Profile Setup", href: "/profile-setup", icon: UserPlus },
   { name: "Settings", href: "/settings", icon: Settings, admin: true }, // Only show to admins
-  {
-    name: "Developer Docs",
-    href: "/developer-docs",
-    icon: Code,
-    admin: true, // Only show to admins
-  },
 ]
 
 function SidebarContent() {

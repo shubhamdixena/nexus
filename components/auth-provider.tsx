@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '../lib/supabaseClient'
+import DataPreloader from '@/lib/data-preloader'
+import DashboardPreloader from '@/lib/dashboard-preloader'
 import type { User } from '@supabase/supabase-js'
 
 type SupabaseUser = User | null
@@ -9,6 +11,7 @@ type SupabaseUser = User | null
 interface AuthContextType {
   user: SupabaseUser
   loading: boolean
+  dataPreloaded: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
   signOut: () => Promise<void>
@@ -22,25 +25,26 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SupabaseUser>(null)
   const [loading, setLoading] = useState(true)
+  const [dataPreloaded, setDataPreloaded] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    // Get initial authenticated user
+    const getInitialUser = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+        const { data: { user }, error } = await supabase.auth.getUser()
         if (error) {
-          console.error('Error getting session:', error)
+          console.error('Error getting user:', error)
         }
-        setUser(session?.user ?? null)
+        setUser(user ?? null)
         setLoading(false)
       } catch (error) {
-        console.error('Failed to get initial session:', error)
+        console.error('Failed to get initial user:', error)
         setLoading(false)
       }
     }
 
-    getInitialSession()
+    getInitialUser()
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -50,10 +54,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
         
         // Handle different auth events
-        if (event === 'SIGNED_IN') {
-          console.log('User signed in:', session?.user?.email)
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('User signed in:', session.user.email)
+          setDataPreloaded(false)
+          
+          // Start enhanced data preloading in the background
+          Promise.all([
+            DataPreloader.preloadUserData(session.user),
+            DashboardPreloader.smartPreload(session.user.id, window.location.pathname)
+          ])
+            .then(() => {
+              setDataPreloaded(true)
+              console.log('✅ Enhanced data preload completed')
+            })
+            .catch(error => {
+              console.error('❌ Data preload failed:', error)
+              setDataPreloaded(true) // Set to true anyway to avoid blocking UI
+            })
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out')
+          setDataPreloaded(false)
+          // Clear cached data on logout
+          DataPreloader.clearPreloadedData()
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('Token refreshed')
         }
@@ -139,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     user,
     loading,
+    dataPreloaded,
     signIn,
     signUp,
     signOut,

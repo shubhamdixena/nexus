@@ -75,7 +75,7 @@ import {
 } from '@/lib/realtime-services'
 
 export const AdminAdvancedUserManagement = React.memo(() => {
-  // State with proper types
+  // State with proper types and initialization
   const [userActivityLogs, setUserActivityLogs] = useState<UserActivityLog[]>([])
   const [userSegments, setUserSegments] = useState<UserSegment[]>([])
   const [messages, setMessages] = useState<Message[]>([])
@@ -96,19 +96,19 @@ export const AdminAdvancedUserManagement = React.memo(() => {
       try {
         // Load activity logs from API
         const activityLogsResponse = await AdvancedUserRealtimeService.getUserActivityLogs()
-        setUserActivityLogs(activityLogsResponse || [])
+        setUserActivityLogs(Array.isArray(activityLogsResponse?.data) ? activityLogsResponse.data : [])
         
         // Load user segments from API
         const segmentsResponse = await AdvancedUserRealtimeService.getUserSegments()
-        setUserSegments(segmentsResponse || [])
+        setUserSegments(Array.isArray(segmentsResponse) ? segmentsResponse : [])
         
         // Load messages from API
         const messagesResponse = await AdvancedUserRealtimeService.getMessages()
-        setMessages(messagesResponse || [])
+        setMessages(Array.isArray(messagesResponse?.data) ? messagesResponse.data : [])
         
         // Load users from API
         const usersResponse = await UserRealtimeService.getUsers()
-        setUsers(usersResponse || [])
+        setUsers(Array.isArray(usersResponse?.data) ? usersResponse.data : [])
       } catch (error) {
         console.error('Error loading advanced user management data:', error)
         // Set empty arrays as fallback
@@ -136,7 +136,7 @@ export const AdminAdvancedUserManagement = React.memo(() => {
   }
 
   // Filter activity logs based on search query and selected date
-  const filteredActivityLogs = userActivityLogs.filter((log) => {
+  const filteredActivityLogs = Array.isArray(userActivityLogs) ? userActivityLogs.filter((log) => {
     const matchesSearch =
       log.user_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.action?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -146,22 +146,24 @@ export const AdminAdvancedUserManagement = React.memo(() => {
     const matchesDate = selectedDate ? new Date(log.timestamp).toDateString() === selectedDate.toDateString() : true
 
     return matchesSearch && matchesDate
-  })
+  }) : []
 
   // Filter user segments based on search query
-  const filteredUserSegments = userSegments.filter((segment) =>
+  const filteredUserSegments = Array.isArray(userSegments) ? userSegments.filter((segment) =>
     segment.name?.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  ) : []
 
   // Filter messages based on search query
-  const filteredMessages = messages.filter((message) => message.subject?.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredMessages = Array.isArray(messages) ? messages.filter((message) => 
+    message.subject?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) : []
 
   // Filter users based on search query
-  const filteredUsers = users.filter(
+  const filteredUsers = Array.isArray(users) ? users.filter(
     (user) =>
       user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  ) : []
 
   // Handle creating a new segment
   const handleCreateSegment = () => {
@@ -617,7 +619,7 @@ export const AdminAdvancedUserManagement = React.memo(() => {
                                     <CheckCircle2 className="h-4 w-4" /> View Analytics
                                   </DropdownMenuItem>
                                 )}
-                                {message.status !== "Sent" && (
+                                {message.status !== "sent" && (
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem className="flex items-center gap-2">
