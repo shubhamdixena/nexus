@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth-provider"
+import { useActivityTracker } from "@/hooks/use-activity-tracker"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { PerformanceMonitor } from "@/components/performance-monitor"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -84,6 +86,14 @@ interface Application {
 
 export default function Home() {
   const { user, loading } = useAuth()
+  
+  // Track user activity automatically
+  useActivityTracker({
+    trackPageViews: true,
+    trackClicks: true,
+    trackFormSubmissions: true
+  })
+  
   const [profileData, setProfileData] = useState<any>(null)
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
   const [deadlines, setDeadlines] = useState<DeadlineItem[]>([])
@@ -138,17 +148,30 @@ export default function Home() {
       
       setIsLoadingData(true)
       try {
-        // Load profile data
-        const profileResponse = await fetch("/api/profile")
-        if (profileResponse.ok) {
-          const { profile, completion } = await profileResponse.json()
+        // Load all data in parallel instead of sequentially
+        const [
+          profileResponse,
+          deadlinesResponse,
+          schoolDeadlinesResponse,
+          applicationsResponse,
+          activityResponse
+        ] = await Promise.allSettled([
+          fetch("/api/profile"),
+          fetch("/api/deadlines"),
+          fetch("/api/school-deadlines"),
+          fetch("/api/applications"),
+          fetch("/api/activity?limit=5")
+        ])
+
+        // Process profile data
+        if (profileResponse.status === 'fulfilled' && profileResponse.value.ok) {
+          const { profile, completion } = await profileResponse.value.json()
           setProfileData({ ...profile, completion })
         }
 
-        // Load personal deadlines
-        const deadlinesResponse = await fetch("/api/deadlines")
-        if (deadlinesResponse.ok) {
-          const { data: deadlinesData } = await deadlinesResponse.json()
+        // Process deadlines data
+        if (deadlinesResponse.status === 'fulfilled' && deadlinesResponse.value.ok) {
+          const { data: deadlinesData } = await deadlinesResponse.value.json()
           if (deadlinesData && Array.isArray(deadlinesData)) {
             const processedDeadlines = deadlinesData.map((deadline: any) => ({
               ...deadline,
@@ -161,10 +184,9 @@ export default function Home() {
           }
         }
 
-        // Load school deadlines
-        const schoolDeadlinesResponse = await fetch("/api/school-deadlines")
-        if (schoolDeadlinesResponse.ok) {
-          const { data: schoolDeadlinesData } = await schoolDeadlinesResponse.json()
+        // Process school deadlines data
+        if (schoolDeadlinesResponse.status === 'fulfilled' && schoolDeadlinesResponse.value.ok) {
+          const { data: schoolDeadlinesData } = await schoolDeadlinesResponse.value.json()
           if (schoolDeadlinesData && Array.isArray(schoolDeadlinesData)) {
             const processedSchoolDeadlines = schoolDeadlinesData.map((deadline: any) => ({
               ...deadline,
@@ -178,10 +200,9 @@ export default function Home() {
           }
         }
 
-        // Load applications
-        const applicationsResponse = await fetch("/api/applications")
-        if (applicationsResponse.ok) {
-          const { data: applicationsData } = await applicationsResponse.json()
+        // Process applications data
+        if (applicationsResponse.status === 'fulfilled' && applicationsResponse.value.ok) {
+          const { data: applicationsData } = await applicationsResponse.value.json()
           if (applicationsData && Array.isArray(applicationsData)) {
             setApplications(applicationsData)
           } else {
@@ -189,68 +210,40 @@ export default function Home() {
           }
         }
 
-        // Load recent activity from activity logs
-        const activityResponse = await fetch("/api/activity?limit=5")
-        if (activityResponse.ok) {
-          const { data: activityData } = await activityResponse.json()
+        // Process activity data
+        if (activityResponse.status === 'fulfilled' && activityResponse.value.ok) {
+          const { data: activityData } = await activityResponse.value.json()
           if (activityData && Array.isArray(activityData)) {
             const formattedActivity = activityData.map((activity: any) => ({
               id: activity.id,
               type: 'activity' as const,
               title: activity.action,
-              description: activity.details || activity.resource,
-              timestamp: formatRelativeTime(activity.timestamp),
+              description: `${activity.resource}${activity.details ? ` - ${activity.details}` : ''}`,
+              timestamp: activity.timestamp || activity.created_at,
               icon: getActivityIcon(activity.resource),
               resource: activity.resource,
-              action: activity.action,
-              created_at: activity.timestamp
+              action: activity.action
             }))
             setRecentActivity(formattedActivity)
-          } else {
-            setRecentActivity([])
-          }
-        } else {
-          // Fallback to bookmarks if activity logs are not available
-          const bookmarksResponse = await fetch("/api/bookmarks?limit=5")
-          if (bookmarksResponse.ok) {
-            const { data: bookmarksData } = await bookmarksResponse.json()
-            if (bookmarksData && Array.isArray(bookmarksData)) {
-              const recentBookmarks = bookmarksData.map((bookmark: any) => ({
-                id: bookmark.id,
-                type: 'bookmark' as const,
-                title: `Saved ${bookmark.item_type === 'mba_school' ? 'MBA School' : bookmark.item_type}`,
-                description: `Added to your ${bookmark.item_type === 'mba_school' ? 'target schools' : 'saved items'}`,
-                timestamp: formatRelativeTime(bookmark.created_at),
-                icon: bookmark.item_type === 'mba_school' ? School : 
-                      bookmark.item_type === 'scholarship' ? Star : 
-                      bookmark.item_type === 'university' ? GraduationCap : BookOpen,
-                item_type: bookmark.item_type,
-                created_at: bookmark.created_at
-              }))
-              setRecentActivity(recentBookmarks)
-            } else {
-              setRecentActivity([])
-            }
           } else {
             setRecentActivity([])
           }
         }
 
       } catch (error) {
-        console.error("Error loading dashboard data:", error)
+        console.error('Error loading dashboard data:', error)
+        // Set empty states on error
+        setDeadlines([])
+        setSchoolDeadlines([])
+        setApplications([])
+        setRecentActivity([])
       } finally {
-        setIsLoadingProfile(false)
         setIsLoadingData(false)
       }
     }
 
-    if (!loading && user) {
-      loadDashboardData()
-    } else if (!loading && !user) {
-      setIsLoadingProfile(false)
-      setIsLoadingData(false)
-    }
-  }, [user, loading])
+    loadDashboardData()
+  }, [user])
 
   function getTimeBasedGreeting() {
     const hour = new Date().getHours()
@@ -418,6 +411,7 @@ export default function Home() {
 
   return (
     <DashboardLayout>
+      <PerformanceMonitor />
       <div className="container mx-auto p-4 md:p-6">
         {/* Welcome Section */}
         <div className="mb-6">

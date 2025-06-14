@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import ActivityLogger from "@/lib/activity-logger"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -154,10 +155,19 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
     
     onChange([...value, newTarget])
     setSearchTerm("")
+    
+    // Track the activity
+    ActivityLogger.addTargetSchool(school.name, 5)
   }
 
   const removeSchoolTarget = (schoolId: string) => {
+    const targetToRemove = value.find(target => target.school_id === schoolId)
     onChange(value.filter(target => target.school_id !== schoolId))
+    
+    // Track the activity
+    if (targetToRemove) {
+      ActivityLogger.removeTargetSchool(targetToRemove.school_name)
+    }
   }
 
   const updateSchoolTarget = (schoolId: string, updates: Partial<SchoolTarget>) => {
