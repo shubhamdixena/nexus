@@ -246,6 +246,11 @@ export default function SignupPage() {
                   Sign in
                 </Link>
               </p>
+              <p>
+                <Link href="/landing" className="text-muted-foreground hover:text-primary underline">
+                  ← Back to home
+                </Link>
+              </p>
             </div>
           </div>
         </Card>

@@ -101,7 +101,7 @@ class DashboardPreloader {
     const componentsToPreload = [
       'admin-panel',
       'settings-panel',
-      'profile-setup'
+      'profile'
     ]
 
     componentsToPreload.forEach(component => {
@@ -122,8 +122,8 @@ class DashboardPreloader {
         case 'settings-panel':
           await import('../components/settings-panel')
           break
-        case 'profile-setup':
-          await import('../components/comprehensive-profile-setup')
+              case 'profile':
+        await import('../components/comprehensive-profile-setup')
           break
       }
     } catch (error) {
@@ -175,7 +175,7 @@ class DashboardPreloader {
   private static preloadLikelyNextPages(currentPath: string) {
     const nextPageMap: Record<string, string[]> = {
       '/': ['/profile', '/mba-schools', '/timeline'],
-      '/profile': ['/profile-setup', '/documents'],
+      '/profile': ['/documents'],
       '/mba-schools': ['/mba-schools/compare', '/applications'],
       '/settings': ['/profile', '/'],
     }

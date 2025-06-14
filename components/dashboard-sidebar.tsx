@@ -15,7 +15,6 @@ import {
   Home,
   Settings,
   User,
-  UserPlus,
 } from "lucide-react"
 
 const links = [
@@ -28,7 +27,6 @@ const links = [
   { name: "NEXUS Calendar", href: "/calendar", icon: CalendarDays },
   { name: "Knowledge Base", href: "/knowledge-base", icon: FileText },
   { name: "Profile", href: "/profile", icon: User },
-  { name: "Profile Setup", href: "/profile-setup", icon: UserPlus },
   { name: "Settings", href: "/settings", icon: Settings, admin: true }, // Only show to admins
 ]
 

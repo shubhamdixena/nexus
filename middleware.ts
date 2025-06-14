@@ -14,7 +14,7 @@ const publicPaths = [
 
 // Paths that require authentication but don't need profile setup check
 const authRequiredPaths = [
-  "/profile-setup",
+  "/profile",
   "/api/profile"
 ]
 
@@ -25,6 +25,11 @@ const adminPaths = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Redirect /profile-setup to /profile (we merged them)
+  if (pathname === "/profile-setup") {
+    return NextResponse.redirect(new URL("/profile", request.url))
+  }
 
   // Check if the path is public
   if (publicPaths.some((path) => pathname === path || pathname.startsWith(path))) {
@@ -97,7 +102,11 @@ export async function middleware(request: NextRequest) {
     
     if (userError) {
       console.error("User authentication error in middleware:", userError)
-      // Clear any invalid session and redirect to login
+      // For root path, redirect to landing page instead of login
+      if (pathname === '/') {
+        return NextResponse.redirect(new URL("/landing", request.url))
+      }
+      // For other paths, redirect to login with error
       const loginUrl = new URL("/auth/login", request.url)
       loginUrl.searchParams.set("error", "session_invalid")
       const loginResponse = NextResponse.redirect(loginUrl)
@@ -111,11 +120,22 @@ export async function middleware(request: NextRequest) {
 
     // Check if user exists and is authenticated
     if (!user) {
-      console.log("No authenticated user found, redirecting to login")
+      console.log("No authenticated user found")
+      // For root path, redirect to landing page for better UX
+      if (pathname === '/') {
+        return NextResponse.redirect(new URL("/landing", request.url))
+      }
+      // For other protected paths, redirect to login with callback
       const url = new URL("/auth/login", request.url)
       const callbackUrl = new URL(pathname, request.url).toString()
       url.searchParams.set("callbackUrl", callbackUrl)
       return NextResponse.redirect(url)
+    }
+
+    // If user is authenticated and visiting the root, redirect to dashboard
+    if (pathname === '/' && user) {
+      // User is authenticated, let them access the dashboard
+      return response
     }
 
     // Verify user email is confirmed
@@ -165,12 +185,12 @@ export async function middleware(request: NextRequest) {
 
       if (error) {
         console.error("Error checking profile completion in middleware:", error)
-        // If profile doesn't exist, create a basic one and redirect to profile setup
+        // If profile doesn't exist, create a basic one and redirect to profile
         if (error.code === 'PGRST116') {
-          console.log("No profile found, redirecting to profile setup")
-          const profileSetupUrl = new URL("/profile-setup", request.url)
-          profileSetupUrl.searchParams.set("required", "true")
-          return NextResponse.redirect(profileSetupUrl)
+          console.log("No profile found, redirecting to profile")
+          const profileUrl = new URL("/profile", request.url)
+          profileUrl.searchParams.set("required", "true")
+          return NextResponse.redirect(profileUrl)
         }
         return response
       }
@@ -185,7 +205,11 @@ export async function middleware(request: NextRequest) {
 
   } catch (authError) {
     console.error("Authentication error in middleware:", authError)
-    // Clear session and redirect to login
+    // For root path, redirect to landing page
+    if (pathname === '/') {
+      return NextResponse.redirect(new URL("/landing", request.url))
+    }
+    // For other paths, redirect to login
     const loginUrl = new URL("/auth/login", request.url)
     loginUrl.searchParams.set("error", "auth_failed")
     const loginResponse = NextResponse.redirect(loginUrl)
@@ -200,23 +224,11 @@ export async function middleware(request: NextRequest) {
   // Add security headers
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.headers.set('X-XSS-Protection', '1; mode=block')
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  
+  response.headers.set('Referrer-Policy', 'origin-when-cross-origin')
+
   return response
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc.)
-     * - api/auth (handled separately)
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
 }

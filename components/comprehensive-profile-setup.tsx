@@ -37,6 +37,8 @@ import {
   X
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
+import { EnhancedSchoolSelector } from "@/components/enhanced-school-selector"
 
 // Comprehensive schemas for all profile sections - all fields optional
 const personalInfoSchema = z.object({
@@ -1095,96 +1097,75 @@ function CareerGoalsFields({ form }: { form: any }) {
 
  // Target Universities Fields Component
 function TargetUniversitiesFields({ form }: { form: any }) {
-  const [universities, setUniversities] = useState([
-    { name: "", program: "", priority: "high" }
-  ])
+  const [targets, setTargets] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const addUniversity = () => {
-    setUniversities([...universities, { name: "", program: "", priority: "medium" }])
+  // Get current user ID
+  const [userId, setUserId] = useState<string>("")
+
+  useEffect(() => {
+    loadUserData()
+    loadSchoolTargets()
+  }, [])
+
+  const loadUserData = async () => {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserId(user.id)
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error)
+    }
   }
 
-  const removeUniversity = (index: number) => {
-    const updated = universities.filter((_, i) => i !== index)
-    setUniversities(updated)
+  const loadSchoolTargets = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/school-targets')
+      if (response.ok) {
+        const data = await response.json()
+        setTargets(data.targets || [])
+      }
+    } catch (error) {
+      console.error('Error loading school targets:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleTargetsChange = async (newTargets: any[]) => {
+    setTargets(newTargets)
+    
+    // Auto-save targets to database
+    try {
+      // For now, just update the local state
+      // The EnhancedSchoolSelector component handles the API calls
+    } catch (error) {
+      console.error('Error saving targets:', error)
+    }
+  }
+
+  if (isLoading || !userId) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-center items-center py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-muted-foreground">Loading your target schools...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">🎯 Target Universities</h3>
-        <Button type="button" onClick={addUniversity} size="sm" variant="outline">
-          <Plus className="h-4 w-4 mr-2" />
-          Add University
-        </Button>
-      </div>
-      
-      <p className="text-sm text-muted-foreground">
-        Add the universities and programs you're specifically targeting for your applications.
-      </p>
-      
-      {universities.map((uni, index) => (
-        <Card key={index} className="p-4 border-l-4 border-l-blue-500">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium">University Name</label>
-              <Input 
-                placeholder="Harvard Business School"
-                value={uni.name}
-                onChange={(e) => {
-                  const updated = [...universities]
-                  updated[index].name = e.target.value
-                  setUniversities(updated)
-                }}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Program</label>
-              <Input 
-                placeholder="MBA, MS Finance, etc."
-                value={uni.program}
-                onChange={(e) => {
-                  const updated = [...universities]
-                  updated[index].program = e.target.value
-                  setUniversities(updated)
-                }}
-              />
-            </div>
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <label className="text-sm font-medium">Priority</label>
-                <Select 
-                  value={uni.priority}
-                  onValueChange={(value) => {
-                    const updated = [...universities]
-                    updated[index].priority = value
-                    setUniversities(updated)
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">🔴 Dream School</SelectItem>
-                    <SelectItem value="medium">🟡 Target School</SelectItem>
-                    <SelectItem value="low">🟢 Safety School</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {universities.length > 1 && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => removeUniversity(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </Card>
-      ))}
-    </div>
+    <EnhancedSchoolSelector
+      value={targets}
+      onChange={handleTargetsChange}
+      userId={userId}
+    />
   )
 }
 
