@@ -48,13 +48,15 @@ interface DeadlineItem {
 
 interface RecentActivity {
   id: string
-  type: 'bookmark' | 'application' | 'profile_update' | 'document_upload'
+  type: 'bookmark' | 'application' | 'profile_update' | 'document_upload' | 'activity'
   title: string
   description: string
   timestamp: string
   icon: any
   item_type?: string
   created_at?: string
+  resource?: string
+  action?: string
 }
 
 interface TestScore {
@@ -147,68 +149,90 @@ export default function Home() {
         const deadlinesResponse = await fetch("/api/deadlines")
         if (deadlinesResponse.ok) {
           const { data: deadlinesData } = await deadlinesResponse.json()
-          const processedDeadlines = deadlinesData.map((deadline: any) => ({
-            ...deadline,
-            daysLeft: calculateDaysLeft(deadline.date),
-            university: deadline.title.includes('Deadline') ? deadline.title.replace(' Deadline', '') : deadline.title
-          }))
-          setDeadlines(processedDeadlines)
+          if (deadlinesData && Array.isArray(deadlinesData)) {
+            const processedDeadlines = deadlinesData.map((deadline: any) => ({
+              ...deadline,
+              daysLeft: calculateDaysLeft(deadline.date),
+              university: deadline.title.includes('Deadline') ? deadline.title.replace(' Deadline', '') : deadline.title
+            }))
+            setDeadlines(processedDeadlines)
+          } else {
+            setDeadlines([])
+          }
         }
 
         // Load school deadlines
         const schoolDeadlinesResponse = await fetch("/api/school-deadlines")
         if (schoolDeadlinesResponse.ok) {
           const { data: schoolDeadlinesData } = await schoolDeadlinesResponse.json()
-          const processedSchoolDeadlines = schoolDeadlinesData.map((deadline: any) => ({
-            ...deadline,
-            daysLeft: calculateDaysLeft(deadline.date),
-            university: deadline.school_name,
-            type: deadline.deadline_type === 'scholarship' ? 'scholarship' : 'application'
-          }))
-          setSchoolDeadlines(processedSchoolDeadlines)
+          if (schoolDeadlinesData && Array.isArray(schoolDeadlinesData)) {
+            const processedSchoolDeadlines = schoolDeadlinesData.map((deadline: any) => ({
+              ...deadline,
+              daysLeft: calculateDaysLeft(deadline.date),
+              university: deadline.school_name,
+              type: deadline.deadline_type === 'scholarship' ? 'scholarship' : 'application'
+            }))
+            setSchoolDeadlines(processedSchoolDeadlines)
+          } else {
+            setSchoolDeadlines([])
+          }
         }
 
         // Load applications
         const applicationsResponse = await fetch("/api/applications")
         if (applicationsResponse.ok) {
           const { data: applicationsData } = await applicationsResponse.json()
-          setApplications(applicationsData)
+          if (applicationsData && Array.isArray(applicationsData)) {
+            setApplications(applicationsData)
+          } else {
+            setApplications([])
+          }
         }
 
         // Load recent activity from activity logs
         const activityResponse = await fetch("/api/activity?limit=5")
         if (activityResponse.ok) {
           const { data: activityData } = await activityResponse.json()
-          const formattedActivity = activityData.map((activity: any) => ({
-            id: activity.id,
-            type: 'activity',
-            title: activity.action,
-            description: activity.details || activity.resource,
-            timestamp: formatRelativeTime(activity.timestamp),
-            icon: getActivityIcon(activity.resource),
-            resource: activity.resource,
-            action: activity.action,
-            created_at: activity.timestamp
-          }))
-          setRecentActivity(formattedActivity)
+          if (activityData && Array.isArray(activityData)) {
+            const formattedActivity = activityData.map((activity: any) => ({
+              id: activity.id,
+              type: 'activity' as const,
+              title: activity.action,
+              description: activity.details || activity.resource,
+              timestamp: formatRelativeTime(activity.timestamp),
+              icon: getActivityIcon(activity.resource),
+              resource: activity.resource,
+              action: activity.action,
+              created_at: activity.timestamp
+            }))
+            setRecentActivity(formattedActivity)
+          } else {
+            setRecentActivity([])
+          }
         } else {
           // Fallback to bookmarks if activity logs are not available
           const bookmarksResponse = await fetch("/api/bookmarks?limit=5")
           if (bookmarksResponse.ok) {
             const { data: bookmarksData } = await bookmarksResponse.json()
-            const recentBookmarks = bookmarksData.map((bookmark: any) => ({
-              id: bookmark.id,
-              type: 'bookmark',
-              title: `Saved ${bookmark.item_type === 'mba_school' ? 'MBA School' : bookmark.item_type}`,
-              description: `Added to your ${bookmark.item_type === 'mba_school' ? 'target schools' : 'saved items'}`,
-              timestamp: formatRelativeTime(bookmark.created_at),
-              icon: bookmark.item_type === 'mba_school' ? School : 
-                    bookmark.item_type === 'scholarship' ? Star : 
-                    bookmark.item_type === 'university' ? GraduationCap : BookOpen,
-              item_type: bookmark.item_type,
-              created_at: bookmark.created_at
-            }))
-            setRecentActivity(recentBookmarks)
+            if (bookmarksData && Array.isArray(bookmarksData)) {
+              const recentBookmarks = bookmarksData.map((bookmark: any) => ({
+                id: bookmark.id,
+                type: 'bookmark' as const,
+                title: `Saved ${bookmark.item_type === 'mba_school' ? 'MBA School' : bookmark.item_type}`,
+                description: `Added to your ${bookmark.item_type === 'mba_school' ? 'target schools' : 'saved items'}`,
+                timestamp: formatRelativeTime(bookmark.created_at),
+                icon: bookmark.item_type === 'mba_school' ? School : 
+                      bookmark.item_type === 'scholarship' ? Star : 
+                      bookmark.item_type === 'university' ? GraduationCap : BookOpen,
+                item_type: bookmark.item_type,
+                created_at: bookmark.created_at
+              }))
+              setRecentActivity(recentBookmarks)
+            } else {
+              setRecentActivity([])
+            }
+          } else {
+            setRecentActivity([])
           }
         }
 

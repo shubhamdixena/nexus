@@ -677,13 +677,9 @@ export function ProfileView() {
                       <span className="font-medium truncate flex-1">{target.school_name}</span>
                       <Badge 
                         variant="outline" 
-                        className={
-                          target.target_category === 'dream' ? 'border-red-200 text-red-700' :
-                          target.target_category === 'target' ? 'border-blue-200 text-blue-700' :
-                          'border-green-200 text-green-700'
-                        }
+                        className="bg-black text-white dark:bg-white dark:text-black"
                       >
-                        {target.target_category}
+                        Priority: {target.priority_score || 5}
                       </Badge>
                     </div>
                   ))}

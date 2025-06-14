@@ -48,7 +48,6 @@ export async function GET(request: NextRequest) {
       school_name: target.mba_schools?.name,
       location: target.mba_schools?.location,
       ranking_tier: target.mba_schools?.ranking_tier,
-      target_category: target.target_category,
       program_of_interest: target.program_of_interest,
       application_round: target.application_round,
       notes: target.notes,
@@ -81,7 +80,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       school_id,
-      target_category,
       program_of_interest,
       application_round,
       notes,
@@ -89,9 +87,9 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate required fields
-    if (!school_id || !target_category) {
+    if (!school_id) {
       return NextResponse.json(
-        { error: "school_id and target_category are required" }, 
+        { error: "school_id is required" }, 
         { status: 400 }
       )
     }
@@ -102,7 +100,6 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         school_id,
-        target_category,
         program_of_interest,
         application_round,
         notes,
@@ -142,7 +139,6 @@ export async function POST(request: NextRequest) {
       school_name: newTarget.mba_schools?.name,
       location: newTarget.mba_schools?.location,
       ranking_tier: newTarget.mba_schools?.ranking_tier,
-      target_category: newTarget.target_category,
       program_of_interest: newTarget.program_of_interest,
       application_round: newTarget.application_round,
       notes: newTarget.notes,
@@ -175,7 +171,6 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const {
       id,
-      target_category,
       program_of_interest,
       application_round,
       notes,
@@ -191,7 +186,6 @@ export async function PUT(request: NextRequest) {
     const { data: updatedTarget, error } = await supabase
       .from('user_school_targets')
       .update({
-        target_category,
         program_of_interest,
         application_round,
         notes,
@@ -231,7 +225,6 @@ export async function PUT(request: NextRequest) {
       school_name: updatedTarget.mba_schools?.name,
       location: updatedTarget.mba_schools?.location,
       ranking_tier: updatedTarget.mba_schools?.ranking_tier,
-      target_category: updatedTarget.target_category,
       program_of_interest: updatedTarget.program_of_interest,
       application_round: updatedTarget.application_round,
       notes: updatedTarget.notes,
