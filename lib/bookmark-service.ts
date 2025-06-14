@@ -46,6 +46,33 @@ class BookmarkService {
       throw new Error(`Failed to add bookmark: ${error.message}`)
     }
 
+    // Auto-populate deadlines for school bookmarks
+    if (itemType === 'mba_school' && data) {
+      try {
+        // Get school details to pass school name
+        const schoolResponse = await fetch(`/api/mba-schools/${itemId}`)
+        if (schoolResponse.ok) {
+          const schoolData = await schoolResponse.json()
+          
+          // Trigger auto-population
+          await fetch('/api/deadlines/auto-populate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              source_type: 'school_bookmark',
+              source_id: itemId,
+              source_name: schoolData.school?.name || `School ${itemId}`
+            })
+          })
+        }
+      } catch (autoPopError) {
+        // Don't fail the bookmark operation if auto-population fails
+        console.warn('Failed to auto-populate deadlines for bookmarked school:', autoPopError)
+      }
+    }
+
     return data
   }
 
@@ -184,8 +211,13 @@ class BookmarkService {
     callback: (bookmarks: Bookmark[]) => void,
     itemType?: BookmarkType
   ) {
+    // Create unique channel name per item type to prevent conflicts
+    const channelName = itemType 
+      ? `user-bookmarks-${itemType}-${Math.random().toString(36).substr(2, 9)}`
+      : `user-bookmarks-all-${Math.random().toString(36).substr(2, 9)}`
+    
     return this.supabase
-      .channel('user-bookmarks')
+      .channel(channelName)
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -194,9 +226,13 @@ class BookmarkService {
           filter: itemType ? `item_type=eq.${itemType}` : undefined
         }, 
         async () => {
-          // Refresh bookmarks when changes occur
-          const bookmarks = await this.getUserBookmarks(itemType)
-          callback(bookmarks)
+          try {
+            // Refresh bookmarks when changes occur
+            const bookmarks = await this.getUserBookmarks(itemType)
+            callback(bookmarks)
+          } catch (error) {
+            console.error('Error refreshing bookmarks in subscription:', error)
+          }
         }
       )
       .subscribe()

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { bookmarkService, type BookmarkType } from '@/lib/bookmark-service'
 import { useToast } from '@/hooks/use-toast'
 
@@ -7,6 +7,8 @@ export function useBookmarks(itemType: BookmarkType) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const subscriptionRef = useRef<any>(null)
+  const mountedRef = useRef(true)
 
   // Load user's bookmarked items
   const loadBookmarks = useCallback(async () => {
@@ -14,13 +16,19 @@ export function useBookmarks(itemType: BookmarkType) {
       setLoading(true)
       setError(null)
       const itemIds = await bookmarkService.getBookmarkedItemIds(itemType)
-      setBookmarkedItems(new Set(itemIds))
+      if (mountedRef.current) {
+        setBookmarkedItems(new Set(itemIds))
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load bookmarks'
-      setError(errorMessage)
+      if (mountedRef.current) {
+        setError(errorMessage)
+      }
       console.error('Error loading bookmarks:', err)
     } finally {
-      setLoading(false)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     }
   }, [itemType])
 
@@ -30,33 +38,37 @@ export function useBookmarks(itemType: BookmarkType) {
       const wasBookmarked = bookmarkedItems.has(itemId)
       const isNowBookmarked = await bookmarkService.toggleBookmark(itemType, itemId)
       
-      setBookmarkedItems(prev => {
-        const newSet = new Set(prev)
-        if (isNowBookmarked) {
-          newSet.add(itemId)
-        } else {
-          newSet.delete(itemId)
-        }
-        return newSet
-      })
+      if (mountedRef.current) {
+        setBookmarkedItems(prev => {
+          const newSet = new Set(prev)
+          if (isNowBookmarked) {
+            newSet.add(itemId)
+          } else {
+            newSet.delete(itemId)
+          }
+          return newSet
+        })
 
-      // Show success toast
-      toast({
-        title: isNowBookmarked ? 'Bookmark Added' : 'Bookmark Removed',
-        description: isNowBookmarked 
-          ? 'Item has been added to your bookmarks' 
-          : 'Item has been removed from your bookmarks',
-      })
+        // Show success toast
+        toast({
+          title: isNowBookmarked ? 'Bookmark Added' : 'Bookmark Removed',
+          description: isNowBookmarked 
+            ? 'Item has been added to your bookmarks' 
+            : 'Item has been removed from your bookmarks',
+        })
+      }
 
       return isNowBookmarked
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update bookmark'
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      })
+      if (mountedRef.current) {
+        setError(errorMessage)
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        })
+      }
       console.error('Error toggling bookmark:', err)
       return bookmarkedItems.has(itemId) // Return current state on error
     }
@@ -79,18 +91,49 @@ export function useBookmarks(itemType: BookmarkType) {
 
   // Subscribe to real-time updates
   useEffect(() => {
-    const subscription = bookmarkService.subscribeToUserBookmarks(
-      async () => {
-        // Reload bookmarks when changes occur
-        await loadBookmarks()
-      },
-      itemType
-    )
-
-    return () => {
-      subscription?.unsubscribe()
+    // Cleanup any existing subscription
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe()
+      subscriptionRef.current = null
     }
-  }, [loadBookmarks, itemType])
+
+    // Only subscribe if component is mounted
+    if (!mountedRef.current) return
+
+    try {
+      const subscription = bookmarkService.subscribeToUserBookmarks(
+        async () => {
+          // Only reload if component is still mounted
+          if (mountedRef.current) {
+            await loadBookmarks()
+          }
+        },
+        itemType
+      )
+
+      subscriptionRef.current = subscription
+
+      return () => {
+        if (subscriptionRef.current) {
+          subscriptionRef.current.unsubscribe()
+          subscriptionRef.current = null
+        }
+      }
+    } catch (error) {
+      console.error('Error setting up bookmark subscription:', error)
+    }
+  }, [itemType, loadBookmarks])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe()
+        subscriptionRef.current = null
+      }
+    }
+  }, [])
 
   return {
     bookmarkedItems: Array.from(bookmarkedItems),
@@ -107,29 +150,45 @@ export function useBookmarks(itemType: BookmarkType) {
 export function useBookmarkStatus(itemType: BookmarkType, itemIds: string[]) {
   const [bookmarkStatus, setBookmarkStatus] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
+  const mountedRef = useRef(true)
 
   const checkBookmarks = useCallback(async () => {
     if (itemIds.length === 0) {
-      setBookmarkStatus({})
-      setLoading(false)
+      if (mountedRef.current) {
+        setBookmarkStatus({})
+        setLoading(false)
+      }
       return
     }
 
     try {
       setLoading(true)
       const status = await bookmarkService.checkMultipleBookmarks(itemType, itemIds)
-      setBookmarkStatus(status)
+      if (mountedRef.current) {
+        setBookmarkStatus(status)
+      }
     } catch (err) {
       console.error('Error checking bookmark status:', err)
-      setBookmarkStatus({})
+      if (mountedRef.current) {
+        setBookmarkStatus({})
+      }
     } finally {
-      setLoading(false)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     }
   }, [itemType, itemIds])
 
   useEffect(() => {
     checkBookmarks()
   }, [checkBookmarks])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   return {
     bookmarkStatus,

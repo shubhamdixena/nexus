@@ -1,3 +1,8 @@
+"use client"
+
+// Prevent static generation
+export const dynamic = "force-dynamic"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Home, ArrowLeft, Search } from "lucide-react"

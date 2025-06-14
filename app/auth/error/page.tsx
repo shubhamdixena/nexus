@@ -1,5 +1,8 @@
 "use client"
 
+// Prevent static generation
+export const dynamic = "force-dynamic"
+
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"

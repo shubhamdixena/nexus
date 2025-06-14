@@ -54,7 +54,7 @@ class QueryBuilder {
       const searchTerm = search.trim().toLowerCase()
       switch (table) {
         case 'mba_schools':
-          query = query.or(`name.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%`)
+          query = query.or(`name.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
           break
         case 'scholarships':
           query = query.or(`name.ilike.%${searchTerm}%,provider.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%`)
@@ -295,8 +295,11 @@ export class MBASchoolRealtimeService {
 
       if (error) throw new Error(`Database error: ${error.message}`)
 
+      // No transformation needed - database now uses 'name' field directly
+      const transformedData = data || []
+
       const result = {
-        data: data || [],
+        data: transformedData,
         pagination: {
           page,
           limit,
@@ -318,9 +321,12 @@ export class MBASchoolRealtimeService {
 
   static async createMBASchool(data: Partial<MBASchool>): Promise<MBASchool> {
     try {
+      // No field mapping needed - database now uses 'name' directly
+      const dbData = { ...data }
+
       const { data: result, error } = await supabase
         .from('mba_schools')
-        .insert([data])
+        .insert([dbData])
         .select()
         .single()
 
@@ -329,6 +335,7 @@ export class MBASchoolRealtimeService {
       // Clear cache when data changes
       this.cache.clear()
       
+      // Return result directly - no field mapping needed
       return result
     } catch (error) {
       console.error('Error creating MBA school:', error)
@@ -338,9 +345,12 @@ export class MBASchoolRealtimeService {
 
   static async updateMBASchool(id: string, data: Partial<MBASchool>): Promise<MBASchool> {
     try {
+      // No field mapping needed - database now uses 'name' directly
+      const dbData = { ...data }
+
       const { data: result, error } = await supabase
         .from('mba_schools')
-        .update(data)
+        .update(dbData)
         .eq('id', id)
         .select()
         .single()
@@ -350,6 +360,7 @@ export class MBASchoolRealtimeService {
       // Clear cache when data changes
       this.cache.clear()
       
+      // Return result directly - no field mapping needed
       return result
     } catch (error) {
       console.error('Error updating MBA school:', error)
@@ -391,7 +402,10 @@ export class MBASchoolRealtimeService {
               .order('ranking', { ascending: true })
               .limit(100) // Limit to prevent memory issues
             
-            if (data) callback(data)
+            if (data) {
+              // No transformation needed - database now uses 'name' field directly
+              callback(data)
+            }
           } catch (error) {
             console.error('Subscription callback error:', error)
           }

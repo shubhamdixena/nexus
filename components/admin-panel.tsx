@@ -2,7 +2,7 @@
 import { useState, useMemo, lazy, Suspense, useCallback } from "react"
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, School, BookOpen, Settings, ArrowLeft, FileText, BookOpenCheck, Activity, Flag } from "lucide-react"
+import { Users, School, BookOpen, Settings, ArrowLeft, FileText, BookOpenCheck, Activity, Flag, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -19,6 +19,7 @@ const AdminApplicationManagement = lazy(() => import("./admin-application-manage
 const AdminSopManagement = lazy(() => import("./admin-sop-management").then(m => ({ default: m.AdminSopManagement })))
 const AdminAdvancedUserManagement = lazy(() => import("./admin-advanced-user-management").then(m => ({ default: m.AdminAdvancedUserManagement })))
 const AdminDataCorrections = lazy(() => import("./admin-data-corrections").then(m => ({ default: m.AdminDataCorrections })))
+const AdminAnalyticsDashboard = lazy(() => import("./admin-analytics-dashboard"))
 
 // Memoized loading component
 const ComponentLoader = React.memo(() => (
@@ -127,6 +128,14 @@ const AdminPanel = React.memo(() => {
       description: "Review user-reported data issues",
       component: AdminDataCorrections,
       permission: 'admin.data.manage'
+    },
+    {
+      id: "analytics",
+      title: "User Analytics",
+      icon: BarChart3,
+      description: "Comprehensive user activity analytics and insights",
+      component: AdminAnalyticsDashboard,
+      permission: 'admin.analytics.view'
     },
     {
       id: "advanced-users",

@@ -25,25 +25,27 @@ export async function GET(request: NextRequest) {
     
     const offset = (page - 1) * limit
 
+    // Select all fields and transform them in JavaScript
     let query = supabase
       .from("mba_schools")
       .select("*", { count: "exact" })
-      .eq("status", "active")
 
+    // Update search to use actual database field names
     if (search) {
-      query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
+      query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,description.ilike.%${search}%`)
     }
 
     if (country) {
-      query = query.eq("country", country)
+      // Since most data seems to be USA, we can filter by location contains
+      query = query.ilike("location", `%${country}%`)
     }
 
     if (ranking) {
-      query = query.lte("ranking", parseInt(ranking))
+      query = query.lte("ft_global_mba_rank", parseInt(ranking))
     }
 
     query = query
-      .order("ranking", { ascending: true, nullsLast: true })
+      .order("ft_global_mba_rank", { ascending: true, nullsFirst: false })
       .range(offset, offset + limit - 1)
 
     const { data, error, count } = await query
@@ -56,10 +58,73 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Transform data to match frontend expectations
+    const transformedData = (data || []).map((school: any) => ({
+      // Map database fields to frontend expected fields
+      id: school.id,
+      name: school.name || 'Unknown School',
+      description: school.description,
+      location: school.location || 'USA',
+      country: school.location?.includes('USA') ? 'USA' : 'USA',
+      ranking: school.ft_global_mba_rank || school.qs_mba_rank || school.bloomberg_mba_rank || null,
+      type: 'Full-time MBA',
+      duration: '2 years',
+      tuition: school.tuition_total || null,
+      tuition_per_year: school.tuition_total || null,
+      status: 'active',
+      
+      // Academic info
+      class_size: school.class_size || null,
+      women_percentage: school.women_percentage || null,
+      mean_gmat: school.mean_gmat || null,
+      avg_gmat: school.mean_gmat || null,
+      mean_gpa: school.mean_gpa || null,
+      avg_gpa: school.mean_gpa || null,
+      avg_gre: school.avg_gre || null,
+      avg_work_exp_years: school.avg_work_exp_years || null,
+      avg_work_exp: school.avg_work_exp_years ? `${school.avg_work_exp_years} years` : null,
+      
+      // Application info
+      application_deadline: school.application_deadlines || null,
+      application_deadlines: school.application_deadlines || null,
+      application_fee: school.application_fee || null,
+      gmat_gre_waiver_available: school.gmat_gre_waiver_available || false,
+      class_profile: school.class_profile || null,
+      admissions_rounds: school.admissions_rounds || null,
+      
+      // Rankings
+      qs_mba_rank: school.qs_mba_rank || null,
+      ft_global_mba_rank: school.ft_global_mba_rank || null,
+      bloomberg_mba_rank: school.bloomberg_mba_rank || null,
+      
+      // Employment & Career
+      employment_in_3_months_percent: school.employment_in_3_months_percent || null,
+      employment_in_3_months: school.employment_in_3_months_percent ? `${school.employment_in_3_months_percent}%` : null,
+      employment_rate: school.employment_in_3_months_percent || null,
+      avg_starting_salary: school.avg_starting_salary || null,
+      weighted_salary: school.weighted_salary || null,
+      top_hiring_companies: school.top_hiring_companies || null,
+      
+      // Alumni & Network
+      alumni_network_strength: school.alumni_network_strength || null,
+      notable_alumni: school.notable_alumni || null,
+      
+      // Additional fields
+      international_students_percentage: school.international_students_percentage || null,
+      international_students: school.international_students_percentage ? `${school.international_students_percentage}%` : null,
+      
+      // Timestamps
+      created_at: school.created_at,
+      updated_at: school.updated_at,
+      
+      // Keep original fields for compatibility
+      ...school
+    }))
+
     const totalPages = Math.ceil((count || 0) / limit)
 
     const response: PaginatedResponse<MBASchool> = {
-      data: data || [],
+      data: transformedData,
       pagination: {
         page,
         limit,
@@ -122,21 +187,28 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     
-    if (!body.name || !body.location || !body.country) {
+    if (!body.name || !body.location) {
       return NextResponse.json(
-        { success: false, message: "Name, location, and country are required" },
+        { success: false, message: "Name and location are required" },
         { status: 400 }
       )
     }
 
+    // Map frontend field names to database field names
+    const mappedData = {
+      name: body.name,
+      description: body.description,
+      location: body.location || 'USA',
+      tuition_total: body.tuition || body.tuition_per_year,
+      mean_gmat: body.avg_gmat || body.mean_gmat,
+      // Add other field mappings as needed
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
     const { data, error } = await supabase
       .from("mba_schools")
-      .insert([{
-        ...body,
-        status: "active",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }])
+      .insert([mappedData])
       .select()
       .single()
 

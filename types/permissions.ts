@@ -20,6 +20,7 @@ export type Permission =
   | 'admin.schools.manage' | 'admin.scholarships.manage'
   | 'admin.applications.manage' | 'admin.sop.manage'
   | 'admin.data.manage' | 'admin.settings.manage'
+  | 'admin.analytics.view'
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   admin: [
@@ -35,7 +36,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'admin.users.manage', 'admin.users.advanced',
     'admin.schools.manage', 'admin.scholarships.manage',
     'admin.applications.manage', 'admin.sop.manage',
-    'admin.data.manage', 'admin.settings.manage'
+    'admin.data.manage', 'admin.settings.manage',
+    'admin.analytics.view'
   ],
   user: [
     // Read access to public data, manage own applications

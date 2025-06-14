@@ -630,8 +630,8 @@ function MBASchoolCard({
         </div>
       </CardContent>
       <CardFooter className="flex justify-between border-t pt-3">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/mba-schools/${school.id}`}>View MBA Program</Link>
+        <Button variant="outline" size="sm" className="w-full" asChild>
+          <Link href={`/mba-schools/${school.id}`}>View Full School Program</Link>
         </Button>
       </CardFooter>
     </Card>

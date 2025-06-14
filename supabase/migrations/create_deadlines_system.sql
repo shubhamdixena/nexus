@@ -105,6 +105,11 @@ RETURNS INTEGER AS $$
 DECLARE
     deadlines_added INTEGER := 0;
     import_record_id UUID;
+    current_year INTEGER;
+    next_year INTEGER;
+    app_deadline DATE;
+    scholarship_deadline DATE;
+    interview_deadline DATE;
 BEGIN
     -- Check if we've already imported for this school
     SELECT id INTO import_record_id 
@@ -117,19 +122,37 @@ BEGIN
         RETURN 0; -- Already imported
     END IF;
     
+    -- Calculate appropriate deadlines based on current date
+    current_year := EXTRACT(YEAR FROM CURRENT_DATE);
+    next_year := current_year + 1;
+    
+    -- If we're past October, target next year's application cycle
+    IF EXTRACT(MONTH FROM CURRENT_DATE) >= 10 THEN
+        app_deadline := (next_year || '-01-15')::DATE;  -- January 15th next year
+        scholarship_deadline := (next_year || '-01-01')::DATE;  -- January 1st next year
+        interview_deadline := (next_year || '-03-15')::DATE;  -- March 15th next year
+    ELSE
+        app_deadline := (current_year || '-12-15')::DATE;  -- December 15th this year
+        scholarship_deadline := (current_year || '-12-01')::DATE;  -- December 1st this year
+        interview_deadline := (next_year || '-02-15')::DATE;  -- February 15th next year
+    END IF;
+    
     -- Add common application deadlines (these would be customized per school in real implementation)
     INSERT INTO public.deadlines (user_id, title, deadline_type, priority, deadline_date, notes, source_type, source_id)
     VALUES
-        (p_user_id, p_school_name || ' - Application Deadline', 'application', 'high', '2024-12-15', 'Complete application package due', 'school_bookmark', p_school_id),
-        (p_user_id, p_school_name || ' - Scholarship Application', 'scholarship', 'medium', '2024-12-01', 'Merit-based scholarship application', 'school_bookmark', p_school_id),
-        (p_user_id, p_school_name || ' - Interview Preparation', 'interview', 'medium', '2025-01-15', 'Prepare for potential interviews', 'school_bookmark', p_school_id)
+        (p_user_id, p_school_name || ' - Application Deadline', 'application', 'high', app_deadline, 'Complete application package due', 'school_bookmark', p_school_id),
+        (p_user_id, p_school_name || ' - Scholarship Application', 'scholarship', 'medium', scholarship_deadline, 'Merit-based scholarship application', 'school_bookmark', p_school_id),
+        (p_user_id, p_school_name || ' - Interview Preparation', 'interview', 'medium', interview_deadline, 'Prepare for potential interviews', 'school_bookmark', p_school_id)
     ON CONFLICT (user_id, title, deadline_date) DO NOTHING;
     
     GET DIAGNOSTICS deadlines_added = ROW_COUNT;
     
     -- Record the import
     INSERT INTO public.deadline_auto_imports (user_id, source_type, source_id, deadlines_created)
-    VALUES (p_user_id, 'school_bookmark', p_school_id, deadlines_added);
+    VALUES (p_user_id, 'school_bookmark', p_school_id, deadlines_added)
+    ON CONFLICT (user_id, source_type, source_id) DO UPDATE SET
+        deadlines_created = deadlines_created + EXCLUDED.deadlines_created,
+        import_date = now();
     
     RETURN deadlines_added;
 END;
@@ -146,9 +169,24 @@ RETURNS INTEGER AS $$
 DECLARE
     deadlines_added INTEGER := 0;
     actual_deadline_date DATE;
+    current_year INTEGER;
+    next_year INTEGER;
 BEGIN
-    -- Use provided deadline or default to common scholarship deadline
-    actual_deadline_date := COALESCE(p_deadline_date, '2024-12-31'::DATE);
+    -- Calculate appropriate deadline based on current date
+    current_year := EXTRACT(YEAR FROM CURRENT_DATE);
+    next_year := current_year + 1;
+    
+    -- Use provided deadline or calculate smart default
+    IF p_deadline_date IS NOT NULL THEN
+        actual_deadline_date := p_deadline_date;
+    ELSE
+        -- If we're past October, target next year's deadline cycle
+        IF EXTRACT(MONTH FROM CURRENT_DATE) >= 10 THEN
+            actual_deadline_date := (next_year || '-03-31')::DATE;  -- March 31st next year
+        ELSE
+            actual_deadline_date := (current_year || '-12-31')::DATE;  -- December 31st this year
+        END IF;
+    END IF;
     
     -- Check if we've already imported for this scholarship
     IF EXISTS (
@@ -169,7 +207,10 @@ BEGIN
     
     -- Record the import
     INSERT INTO public.deadline_auto_imports (user_id, source_type, source_id, deadlines_created)
-    VALUES (p_user_id, 'scholarship_save', p_scholarship_id, deadlines_added);
+    VALUES (p_user_id, 'scholarship_save', p_scholarship_id, deadlines_added)
+    ON CONFLICT (user_id, source_type, source_id) DO UPDATE SET
+        deadlines_created = deadlines_created + EXCLUDED.deadlines_created,
+        import_date = now();
     
     RETURN deadlines_added;
 END;

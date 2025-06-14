@@ -1,7 +1,7 @@
+'use client'
+
 // Prevent static generation
 export const dynamic = "force-dynamic"
-
-'use client'
 
 import { useState } from 'react'
 import { runSupabaseHealthCheck, printHealthCheckReport, type HealthCheckResult } from '@/lib/supabase-health-check'

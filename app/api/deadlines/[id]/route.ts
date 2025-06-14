@@ -7,9 +7,10 @@ export const dynamic = 'force-dynamic'
 // GET /api/deadlines/[id] - Get specific deadline
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,7 +33,7 @@ export async function GET(
     const { data: deadline, error } = await supabase
       .from('deadlines')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single()
 
@@ -54,9 +55,10 @@ export async function GET(
 // PATCH /api/deadlines/[id] - Update deadline
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -102,7 +104,7 @@ export async function PATCH(
     const { data: deadline, error } = await supabase
       .from('deadlines')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .select()
       .single()
@@ -131,9 +133,10 @@ export async function PATCH(
 // DELETE /api/deadlines/[id] - Delete deadline
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -156,7 +159,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('deadlines')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
 
     if (error) {
