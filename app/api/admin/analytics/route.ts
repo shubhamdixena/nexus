@@ -287,22 +287,3 @@ async function getUserEngagementAnalytics(supabase: any, days: number) {
 }
 
 // Helper function to get user analytics summary for a specific user
-export async function getUserAnalyticsSummary(supabase: any, userId: string, days: number = 30) {
-  try {
-    const { data, error } = await supabase
-      .rpc('get_user_activity_summary', { 
-        p_user_id: userId, 
-        p_days: days 
-      })
-
-    if (error) {
-      console.error("User analytics summary error:", error)
-      return null
-    }
-
-    return data?.[0] || null
-  } catch (error) {
-    console.error("Get user analytics summary error:", error)
-    return null
-  }
-} 
