@@ -87,7 +87,8 @@ export default function NexusLanding() {
             </Badge>
 
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-              Organize Your Study Abroad Journey with{" "}
+              Organize Your Study Abroad Journey<br />
+              with{" "}
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Intelligence
               </span>
@@ -363,8 +364,8 @@ export default function NexusLanding() {
                 description: "Track your progress and optimize your application strategy with data insights.",
               },
             ].map((feature, index) => (
-              <Card key={index} className="p-6 hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+              <Card key={index} className="p-6 hover:shadow-lg transition-shadow bg-white border-gray-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg flex items-center justify-center mb-4">
                   <feature.icon className="w-6 h-6 text-gray-700" />
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
@@ -380,7 +381,7 @@ export default function NexusLanding() {
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">
-              Loved by students all over the universe
+              Loved by students all around the world
             </h2>
             <p className="text-xl text-gray-600 leading-relaxed">
               See what students are saying about their experience with Nexus and how it transformed their study abroad
@@ -444,6 +445,80 @@ export default function NexusLanding() {
                   </div>
                 </div>
                 <p className="text-gray-700 leading-relaxed">{testimonial.content}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Success Stories - Dark Theme */}
+      <section className="py-20 bg-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              Real success stories from our community
+            </h2>
+            <p className="text-xl text-gray-300 leading-relaxed">
+              Meet students who achieved their dreams with Nexus by their side
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                name: "Sarah Chen",
+                role: "Now at Oxford University",
+                avatar: "SC",
+                content:
+                  "Nexus helped me organize my applications to 8 different universities. I got accepted to 6 of them and received $15,000 in scholarships I never knew existed.",
+              },
+              {
+                name: "Marcus Johnson",
+                role: "Now at ETH Zurich",
+                avatar: "MJ",
+                content:
+                  "The deadline tracking feature saved my life. I almost missed my visa application deadline, but Nexus reminded me 6 weeks in advance. Now I'm studying my dream program!",
+              },
+              {
+                name: "Priya Patel",
+                role: "Now at University of Toronto",
+                avatar: "PP",
+                content:
+                  "I was drowning in paperwork and browser tabs. Nexus organized everything in one place and made the whole process actually manageable. Highly recommend!",
+              },
+              {
+                name: "Ahmed Hassan",
+                role: "Now at MIT",
+                avatar: "AH",
+                content:
+                  "The scholarship finder is incredible. It found niche scholarships that perfectly matched my background. I saved over $20,000 on my education.",
+              },
+              {
+                name: "Emma Rodriguez",
+                role: "Now at Cambridge",
+                avatar: "ER",
+                content:
+                  "As someone who applied to programs in 4 different countries, Nexus was a lifesaver. It handled all the different requirements and deadlines perfectly.",
+              },
+              {
+                name: "David Kim",
+                role: "Now at Stanford",
+                avatar: "DK",
+                content:
+                  "The AI recommendations were spot-on. It suggested programs I never would have found on my own, and I ended up at my dream school because of it.",
+              },
+            ].map((testimonial, index) => (
+              <Card key={index} className="p-6 bg-gray-800 border-gray-700">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-semibold text-white">{testimonial.avatar}</span>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">{testimonial.name}</div>
+                    <div className="text-sm text-gray-400">{testimonial.role}</div>
+                  </div>
+                </div>
+                <p className="text-gray-300 leading-relaxed">{testimonial.content}</p>
               </Card>
             ))}
           </div>
