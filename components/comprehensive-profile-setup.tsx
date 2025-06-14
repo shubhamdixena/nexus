@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,7 +32,9 @@ import {
   DollarSign,
   Calendar,
   Home,
-  Bell
+  Bell,
+  Plus,
+  X
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -76,6 +79,35 @@ const careerGoalsSchema = z.object({
   careerLevel: z.string().optional(),
 })
 
+const targetUniversitiesSchema = z.object({
+  targetUniversities: z.array(z.object({
+    name: z.string(),
+    program: z.string(),
+    priority: z.string(),
+  })).optional(),
+})
+
+const scholarshipsSchema = z.object({
+  scholarshipInterest: z.boolean().optional(),
+  targetScholarships: z.array(z.string()).optional(),
+  budgetRange: z.string().optional(),
+  financialAidNeeded: z.boolean().optional(),
+})
+
+const examPlanningSchema = z.object({
+  plannedExams: z.array(z.object({
+    examType: z.string(),
+    plannedDate: z.string(),
+    targetScore: z.string(),
+  })).optional(),
+  currentScores: z.object({
+    gmat: z.string().optional(),
+    gre: z.string().optional(),
+    toefl: z.string().optional(),
+    ielts: z.string().optional(),
+  }).optional(),
+})
+
 const sections = [
   { 
     id: "personal", 
@@ -104,6 +136,27 @@ const sections = [
     icon: Target, 
     schema: careerGoalsSchema,
     description: "Target programs, career objectives, and aspirations"
+  },
+  { 
+    id: "universities", 
+    title: "Target Universities", 
+    icon: Globe, 
+    schema: targetUniversitiesSchema,
+    description: "Universities and programs you're targeting"
+  },
+  { 
+    id: "scholarships", 
+    title: "Scholarships & Finance", 
+    icon: DollarSign, 
+    schema: scholarshipsSchema,
+    description: "Financial aid and scholarship targets"
+  },
+  { 
+    id: "exam-planning", 
+    title: "Exam Planning", 
+    icon: Calendar, 
+    schema: examPlanningSchema,
+    description: "Planned exams and target scores"
   },
 ]
 
@@ -167,6 +220,19 @@ export function ComprehensiveProfileSetup() {
               industryInterests: profile.industry_interests || [],
               careerLevel: profile.career_level || "",
             },
+            universities: {
+              targetUniversities: profile.target_universities || [],
+            },
+            scholarships: {
+              scholarshipInterest: profile.scholarship_interest || false,
+              targetScholarships: profile.target_scholarships || [],
+              budgetRange: profile.budget_range || "",
+              financialAidNeeded: profile.financial_aid_needed || false,
+            },
+            "exam-planning": {
+              plannedExams: profile.planned_exams || [],
+              currentScores: profile.current_scores || {},
+            },
           })
         } else {
           // Initialize with default empty values if no profile exists
@@ -223,6 +289,19 @@ export function ComprehensiveProfileSetup() {
         preferredCountries: [],
         industryInterests: [],
         careerLevel: "",
+      },
+      universities: {
+        targetUniversities: [],
+      },
+      scholarships: {
+        scholarshipInterest: false,
+        targetScholarships: [],
+        budgetRange: "",
+        financialAidNeeded: false,
+      },
+      "exam-planning": {
+        plannedExams: [],
+        currentScores: {},
       },
     })
   }
@@ -343,7 +422,7 @@ export function ComprehensiveProfileSetup() {
   return (
     <div className="w-full">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-7 mb-6">
           {sections.map((section) => {
             const Icon = section.icon
             return (
@@ -494,6 +573,9 @@ function ProfileSection({ section, data, onSave, isLoading, isSaving }: ProfileS
             {section.id === "education" && <EducationFields form={form} />}
             {section.id === "scores" && <TestScoresFields form={form} />}
             {section.id === "goals" && <CareerGoalsFields form={form} />}
+            {section.id === "universities" && <TargetUniversitiesFields form={form} />}
+            {section.id === "scholarships" && <ScholarshipsFields form={form} />}
+            {section.id === "exam-planning" && <ExamPlanningFields form={form} />}
             
             <div className="flex justify-end">
               <Button type="submit" disabled={isSaving}>
@@ -1011,4 +1093,395 @@ function CareerGoalsFields({ form }: { form: any }) {
   )
 }
 
- 
+ // Target Universities Fields Component
+function TargetUniversitiesFields({ form }: { form: any }) {
+  const [universities, setUniversities] = useState([
+    { name: "", program: "", priority: "high" }
+  ])
+
+  const addUniversity = () => {
+    setUniversities([...universities, { name: "", program: "", priority: "medium" }])
+  }
+
+  const removeUniversity = (index: number) => {
+    const updated = universities.filter((_, i) => i !== index)
+    setUniversities(updated)
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">🎯 Target Universities</h3>
+        <Button type="button" onClick={addUniversity} size="sm" variant="outline">
+          <Plus className="h-4 w-4 mr-2" />
+          Add University
+        </Button>
+      </div>
+      
+      <p className="text-sm text-muted-foreground">
+        Add the universities and programs you're specifically targeting for your applications.
+      </p>
+      
+      {universities.map((uni, index) => (
+        <Card key={index} className="p-4 border-l-4 border-l-blue-500">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium">University Name</label>
+              <Input 
+                placeholder="Harvard Business School"
+                value={uni.name}
+                onChange={(e) => {
+                  const updated = [...universities]
+                  updated[index].name = e.target.value
+                  setUniversities(updated)
+                }}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Program</label>
+              <Input 
+                placeholder="MBA, MS Finance, etc."
+                value={uni.program}
+                onChange={(e) => {
+                  const updated = [...universities]
+                  updated[index].program = e.target.value
+                  setUniversities(updated)
+                }}
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="text-sm font-medium">Priority</label>
+                <Select 
+                  value={uni.priority}
+                  onValueChange={(value) => {
+                    const updated = [...universities]
+                    updated[index].priority = value
+                    setUniversities(updated)
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">🔴 Dream School</SelectItem>
+                    <SelectItem value="medium">🟡 Target School</SelectItem>
+                    <SelectItem value="low">🟢 Safety School</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {universities.length > 1 && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => removeUniversity(index)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+// Scholarships Fields Component  
+function ScholarshipsFields({ form }: { form: any }) {
+  const [targetScholarships, setTargetScholarships] = useState([""]);
+
+  const addScholarship = () => {
+    setTargetScholarships([...targetScholarships, ""]);
+  };
+
+  const removeScholarship = (index: number) => {
+    const updated = targetScholarships.filter((_, i) => i !== index);
+    setTargetScholarships(updated);
+  };
+
+  const updateScholarship = (index: number, value: string) => {
+    const updated = [...targetScholarships];
+    updated[index] = value;
+    setTargetScholarships(updated);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold mb-4">💰 Financial Planning & Scholarships</h3>
+        
+        <FormField
+          control={form.control}
+          name="scholarshipInterest"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 mb-4">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>
+                  I'm actively seeking scholarships and financial aid
+                </FormLabel>
+                <FormDescription>
+                  Check this if you want to receive scholarship recommendations
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="budgetRange"
+          render={({ field }) => (
+            <FormItem className="mb-4">
+              <FormLabel>Total Budget Range (USD)</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your budget range" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="under-50k">Under $50,000</SelectItem>
+                  <SelectItem value="50k-100k">$50,000 - $100,000</SelectItem>
+                  <SelectItem value="100k-150k">$100,000 - $150,000</SelectItem>
+                  <SelectItem value="150k-200k">$150,000 - $200,000</SelectItem>
+                  <SelectItem value="over-200k">Over $200,000</SelectItem>
+                  <SelectItem value="no-limit">No budget constraints</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Include tuition, living expenses, and other costs
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="financialAidNeeded"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 mb-6">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>
+                  I need financial aid to pursue my studies
+                </FormLabel>
+                <FormDescription>
+                  This helps us prioritize need-based scholarships
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h4 className="font-medium">🏆 Target Scholarships</h4>
+          <Button type="button" onClick={addScholarship} size="sm" variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Scholarship
+          </Button>
+        </div>
+        
+        <p className="text-sm text-muted-foreground mb-4">
+          List specific scholarships you're targeting (e.g., "Fulbright", "Rhodes Scholarship", "Merit-based aid")
+        </p>
+
+        {targetScholarships.map((scholarship, index) => (
+          <div key={index} className="flex gap-2 mb-2">
+            <Input
+              placeholder="Scholarship name or type"
+              value={scholarship}
+              onChange={(e) => updateScholarship(index, e.target.value)}
+            />
+            {targetScholarships.length > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => removeScholarship(index)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Exam Planning Fields Component
+function ExamPlanningFields({ form }: { form: any }) {
+  const [plannedExams, setPlannedExams] = useState([
+    { examType: "", plannedDate: "", targetScore: "" }
+  ]);
+
+  const addExam = () => {
+    setPlannedExams([...plannedExams, { examType: "", plannedDate: "", targetScore: "" }]);
+  };
+
+  const removeExam = (index: number) => {
+    const updated = plannedExams.filter((_, i) => i !== index);
+    setPlannedExams(updated);
+  };
+
+  const updateExam = (index: number, field: string, value: string) => {
+    const updated = [...plannedExams];
+    updated[index] = { ...updated[index], [field]: value };
+    setPlannedExams(updated);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold mb-4">📚 Current Test Scores</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Enter your current test scores if you have already taken these exams
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="currentScores.gmat"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>GMAT Score</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., 720" {...field} />
+                </FormControl>
+                <FormDescription>Total score (200-800)</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="currentScores.gre"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>GRE Score</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., 330" {...field} />
+                </FormControl>
+                <FormDescription>Combined Verbal + Quantitative (260-340)</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="currentScores.toefl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>TOEFL Score</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., 110" {...field} />
+                </FormControl>
+                <FormDescription>Total score (0-120)</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="currentScores.ielts"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>IELTS Score</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., 8.0" {...field} />
+                </FormControl>
+                <FormDescription>Overall band score (0-9)</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">🎯 Planned Exams</h3>
+          <Button type="button" onClick={addExam} size="sm" variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Exam
+          </Button>
+        </div>
+        
+        <p className="text-sm text-muted-foreground mb-4">
+          Plan your upcoming exams and set target scores to track your preparation progress
+        </p>
+
+        {plannedExams.map((exam, index) => (
+          <Card key={index} className="p-4 mb-4 border-l-4 border-l-green-500">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium">Exam Type</label>
+                <Select
+                  value={exam.examType}
+                  onValueChange={(value) => updateExam(index, 'examType', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select exam" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gmat">GMAT</SelectItem>
+                    <SelectItem value="gre">GRE</SelectItem>
+                    <SelectItem value="toefl">TOEFL</SelectItem>
+                    <SelectItem value="ielts">IELTS</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Planned Date</label>
+                <Input
+                  type="date"
+                  value={exam.plannedDate}
+                  onChange={(e) => updateExam(index, 'plannedDate', e.target.value)}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="text-sm font-medium">Target Score</label>
+                  <Input
+                    placeholder="Target score"
+                    value={exam.targetScore}
+                    onChange={(e) => updateExam(index, 'targetScore', e.target.value)}
+                  />
+                </div>
+                {plannedExams.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeExam(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+} 

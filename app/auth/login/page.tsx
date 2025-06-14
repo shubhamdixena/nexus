@@ -81,16 +81,6 @@ export default function LoginPage() {
               </Alert>
             )}
             
-            {/* Test accounts info */}
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Test Accounts:</strong><br/>
-                Admin: admin@test.com / admin123<br/>
-                User: user@test.com / user123<br/>
-                Student: student@test.com / student123
-              </AlertDescription>
-            </Alert>
 
             <form onSubmit={handleLogin}>
               <div className="grid gap-2">
