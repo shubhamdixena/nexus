@@ -1,26 +1,37 @@
 import { createBrowserClient, createServerClient, type CookieOptions } from '@supabase/ssr'
 import { Database } from '@/types/database'
 
-// Create a browser client for client components
-export const createClient = () => {
+// Get environment variables with fallbacks and validation
+const getSupabaseConfig = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables')
+  if (!supabaseUrl) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+  }
+  
+  if (!supabaseAnonKey) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
   }
 
+  return {
+    supabaseUrl,
+    supabaseAnonKey,
+    serviceRoleKey
+  }
+}
+
+// Create a browser client for client components
+export const createClient = () => {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
+  
   return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
 }
 
 // Create a server client for server components and API routes
 export const createServerComponentClient = (cookieStore: any) => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
 
   return createServerClient<Database>(
     supabaseUrl,
@@ -71,15 +82,14 @@ export const testSupabaseConnection = async () => {
 
 // Service role client for admin operations (server-side only)
 export const createServiceRoleClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const { supabaseUrl, serviceRoleKey } = getSupabaseConfig()
   
   if (typeof window !== 'undefined') {
     throw new Error('Service role client should only be used server-side')
   }
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase environment variables for service role')
+  if (!serviceRoleKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable for service role')
   }
   
   return createBrowserClient<Database>(supabaseUrl, serviceRoleKey)

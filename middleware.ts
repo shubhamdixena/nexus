@@ -43,6 +43,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Get environment variables with validation
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Missing Supabase environment variables in middleware')
+    console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'present' : 'missing')
+    console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'present' : 'missing')
+    
+    // Redirect to landing page with error
+    const errorUrl = new URL("/landing", request.url)
+    errorUrl.searchParams.set("error", "configuration_error")
+    return NextResponse.redirect(errorUrl)
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -50,8 +65,8 @@ export async function middleware(request: NextRequest) {
   })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
