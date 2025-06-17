@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       .select("*", { count: "exact" })
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
+      query = query.or(`business_school.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
     }
 
     query = query

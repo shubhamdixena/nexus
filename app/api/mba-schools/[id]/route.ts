@@ -36,9 +36,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Keep all original fields for compatibility
       ...data,
       
+      // Use correct database column names (no aliases needed for these)
+      avg_gmat: data.mean_gmat,    // Frontend expects avg_gmat, DB has mean_gmat
+      avg_gpa: data.mean_gpa,      // Frontend expects avg_gpa, DB has mean_gpa
+      avg_gre: data.avg_gre,       // Keep as is - matches DB
+      women_percentage: data.women, // Frontend expects women_percentage, DB has women
+      international_percentage: data.international_students, // Frontend expects percentage, DB has international_students
+      
       // Computed/alias fields for backward compatibility
-      avg_gmat: data.mean_gmat,
-      avg_gpa: data.mean_gpa,
       tuition: data.tuition_total,
       
       // Application deadline aliases
@@ -81,10 +86,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Default values for missing fields
       type: data.type || 'Full-time MBA',
       duration: data.duration || '2 years',
-      status: data.status as 'active' | 'inactive' | 'pending' | null || 'active',
+      
+      // Extract country from location if not present
+      country: data.country || (data.location ? data.location.split(',').pop()?.trim() : null),
       
       // Additional computed fields
-      international_percentage: data.international_students_percentage,
       avg_work_exp: data.avg_work_exp_years ? `${data.avg_work_exp_years} years` : null,
       
       // Rankings (aliases)

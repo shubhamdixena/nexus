@@ -281,22 +281,78 @@ export class MBASchoolRealtimeService {
   }
 
   static async getMBASchools(params: FilterParams = {}): Promise<PaginatedResponse<MBASchool>> {
-    const cacheKey = this.getCacheKey(params)
-    const cached = this.getFromCache(cacheKey)
-    if (cached) return cached
-
     try {
-      const { page = 1, limit = 10 } = params
-      
-      let query = QueryBuilder.buildQuery('mba_schools', params)
-      query = QueryBuilder.applyPagination(query, page, limit)
+      const { page = 1, limit = 10, search, sortBy = 'business_school', sortOrder = 'asc' } = params
+      const offset = (page - 1) * limit
+
+      let query = supabase
+        .from('mba_schools')
+        .select('*', { count: 'exact' })
+
+      // Apply search filter using business_school (not name)
+      if (search?.trim()) {
+        query = query.or(`business_school.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
+      }
+
+      // Apply filters
+      if (params.filters?.country) {
+        query = query.eq('country', params.filters.country)
+      }
+      if (params.filters?.ranking_min) {
+        query = query.gte('qs_mba_rank', params.filters.ranking_min)
+      }
+      if (params.filters?.ranking_max) {
+        query = query.lte('qs_mba_rank', params.filters.ranking_max)
+      }
+
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' })
+      query = query.range(offset, offset + limit - 1)
 
       const { data, error, count } = await query
 
       if (error) throw new Error(`Database error: ${error.message}`)
 
-      // No transformation needed - database uses 'business_school' field directly
-      const transformedData = data || []
+      // Transform data to include computed fields for frontend compatibility
+      const transformedData: MBASchool[] = (data || []).map((school: any): MBASchool => ({
+        // Keep all original fields
+        ...school,
+        
+        // Add computed fields for frontend compatibility
+        avg_gmat: school.mean_gmat,
+        avg_gpa: school.mean_gpa,
+        women_percentage: school.women,
+        international_percentage: school.international_students,
+        
+        // Application deadline aliases
+        R1: school.r1_deadline,
+        R2: school.r2_deadline,
+        R3: school.r3_deadline,
+        R4: school.r4_deadline,
+        R5: school.r5_deadline,
+        
+        // Employment aliases
+        employment_rate: school.employment_in_3_months_percent,
+        
+        // Process top hiring companies into array format
+        top_hiring_companies_array: school.top_hiring_companies 
+          ? school.top_hiring_companies.split(';').map((company: string) => company.trim()).filter((company: string) => company.length > 0)
+          : [],
+          
+        // Default values for missing fields
+        type: school.type || 'Full-time MBA',
+        duration: school.duration || '2 years',
+        
+        // Extract country from location if not present
+        country: school.country || (school.location ? school.location.split(',').pop()?.trim() : null),
+        
+        // Rankings (aliases)
+        qs_rank: school.qs_mba_rank,
+        ft_rank: school.ft_global_mba_rank,
+        bloomberg_rank: school.bloomberg_mba_rank,
+        
+        // Combined ranking (best available)
+        ranking: school.ft_global_mba_rank || school.qs_mba_rank || school.bloomberg_mba_rank || school.ranking
+      }))
 
       const result = {
         data: transformedData,
@@ -311,6 +367,7 @@ export class MBASchoolRealtimeService {
         success: true,
       }
 
+      const cacheKey = this.getCacheKey(params)
       this.setCache(cacheKey, result)
       return result
     } catch (error) {

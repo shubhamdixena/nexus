@@ -90,31 +90,41 @@ export function ReportDataButton({
         ]
       case 'mba_school':
         return [
-          // Rankings
+          // Basic Info (Real database columns only)
+          createOption('business_school', 'Business School Name'),
+          createOption('name', 'School Name'),
+          createOption('description', 'School Description'),
+          createOption('location', 'Location'),
+          createOption('country', 'Country'),
+          createOption('website', 'Website URL'),
+          createOption('key_features', 'Key Features'),
+          
+          // Rankings (Real database columns)
           createOption('qs_mba_rank', 'QS MBA Ranking'),
           createOption('ft_global_mba_rank', 'Financial Times Global MBA Ranking'),
           createOption('bloomberg_mba_rank', 'Bloomberg MBA Ranking'),
           
-          // Financials
+          // Academic Requirements (Real database columns)
+          createOption('mean_gmat', 'Mean GMAT Score'),
+          createOption('mean_gpa', 'Mean GPA'),
+          createOption('avg_gre', 'Average GRE Score'),
+          createOption('gmat_gre_waiver_available', 'GMAT/GRE Waiver Available'),
+          createOption('avg_work_exp_years', 'Average Work Experience (Years)'),
+          
+          // Financials (Fixed field names)
           createOption('tuition_total', 'Total Tuition Fees'),
           createOption('application_fee', 'Application Fee'),
           createOption('avg_starting_salary', 'Average Starting Salary'),
-          createOption('weighted_salary_usd', 'Weighted Salary (USD)'),
+          createOption('weighted_salary', 'Weighted Salary'), // Fixed: removed _usd suffix
           
-          // Academic Requirements
-          createOption('mean_gmat', 'Mean GMAT Score', 'avg_gmat'),
-          createOption('mean_gpa', 'Mean GPA', 'avg_gpa'),
-          createOption('avg_gre', 'Average GRE Score'),
-          createOption('gmat_gre_waiver_available', 'GMAT/GRE Waiver Available'),
-          
-          // Program Details
+          // Program Details (Real database columns)
           createOption('program_duration', 'Program Duration'),
           createOption('class_size', 'Class Size'),
           createOption('credits_required', 'Credits Required'),
           createOption('core_curriculum', 'Core Curriculum'),
           createOption('stem_designation', 'STEM Designation'),
           
-          // Deadlines
+          // Specific Round Deadlines (Real data - these have actual values)
           createOption('r1_deadline', 'Round 1 Deadline'),
           createOption('r2_deadline', 'Round 2 Deadline'),
           createOption('r3_deadline', 'Round 3 Deadline'),
@@ -122,25 +132,21 @@ export function ReportDataButton({
           createOption('r5_deadline', 'Round 5 Deadline'),
           createOption('admissions_rounds', 'Number of Admission Rounds'),
           
-          // Demographics & Employment
-          createOption('avg_work_exp_years', 'Average Work Experience (Years)'),
-          createOption('women', 'Number of Women'),
-          createOption('international_students', 'International Students'),
-          createOption('employment_in_3_months_percent', 'Employment Rate in 3 Months (%)'),
+          // Demographics (Active fields only)
+          createOption('women_percentage', 'Women Percentage'),
+          createOption('international_students_percentage', 'International Students Percentage'),
+          createOption('class_profile', 'Class Profile'),
           
-          // Alumni & Career
+          // Employment & Career (Real database columns)
+          createOption('employment_in_3_months_percent', 'Employment Rate in 3 Months (%)'),
           createOption('top_hiring_companies', 'Top Hiring Companies'),
           createOption('alumni_network_strength', 'Alumni Network Strength'),
+          
+          // Notable Alumni (Structured fields - these have actual data)
           createOption('alumnus_1', 'Notable Alumnus 1'),
           createOption('alumnus_2', 'Notable Alumnus 2'),
           createOption('alumnus_3', 'Notable Alumnus 3'),
-          createOption('alumnus_4', 'Notable Alumnus 4'),
-          
-          // Basic Info
-          createOption('business_school', 'Business School Name'),
-          createOption('description', 'School Description'),
-          createOption('location', 'Location'),
-          createOption('key_features', 'Key Features')
+          createOption('alumnus_4', 'Notable Alumnus 4')
         ]
       case 'scholarship':
         return [
@@ -367,10 +373,19 @@ export function ReportDataButton({
               <SelectTrigger>
                 <SelectValue placeholder="Select the type of information that needs correction" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
                 {getFieldOptions().map(field => (
-                  <SelectItem key={field.value} value={field.value}>
-                    {field.label}
+                  <SelectItem key={field.value} value={field.value} className="text-sm py-2">
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium">{field.label.split(' (currently:')[0]}</span>
+                      {field.currentValue && field.currentValue !== 'Not set' && (
+                        <span className="text-xs text-muted-foreground truncate max-w-[400px]">
+                          Currently: {typeof field.currentValue === 'string' && field.currentValue.length > 50 
+                            ? field.currentValue.substring(0, 50) + '...' 
+                            : field.currentValue}
+                        </span>
+                      )}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -467,4 +482,4 @@ export function ReportDataButton({
       </DialogContent>
     </Dialog>
   )
-} 
+}

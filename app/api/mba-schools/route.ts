@@ -31,12 +31,12 @@ export async function GET(request: NextRequest) {
 
     // Apply search if provided
     if (search) {
-      query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
+      query = query.or(`business_school.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
     }
 
     // Fetch data with pagination
     const { data, error, count } = await query
-      .order('name')
+      .order('business_school')
       .range(offset, offset + limit - 1)
 
     if (error) {

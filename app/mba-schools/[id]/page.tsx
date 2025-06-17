@@ -212,9 +212,10 @@ export default function MBASchoolDetailsPage() {
               <div className="text-sm text-muted-foreground">
                 Full-time MBA • Located in {school?.location}
               </div>
-              {school?.key_features && (
-                <div className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                  {school.key_features}
+              {school?.description && (
+                <div className="text-sm text-gray-700 mt-3 leading-relaxed">
+                  {/* Clean up description to remove redundant information that's already in key_features */}
+                  {school.description.replace(/^[^.]*#1[^.]*\.\s*/, '').trim()}
                 </div>
               )}
             </CardHeader>

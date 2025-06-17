@@ -338,4 +338,4 @@ export async function DELETE(request: NextRequest) {
     console.error('Unexpected error in DELETE /api/school-targets:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-} 
+}

@@ -128,6 +128,7 @@ export function MBASchoolsExplorer() {
   // Real-time subscription for updates
   useEffect(() => {
     const subscription = MBASchoolRealtimeService.subscribeToMBASchools((updatedSchools) => {
+      // Update the schools list with real-time data
       setMbaSchools(updatedSchools)
     })
 
@@ -135,6 +136,11 @@ export function MBASchoolsExplorer() {
       subscription?.unsubscribe()
     }
   }, [])
+
+  // Load MBA schools on component mount and filter changes
+  useEffect(() => {
+    loadMBASchools()
+  }, [loadMBASchools])
 
   const resetFilters = () => {
     setSelectedCountry(null)

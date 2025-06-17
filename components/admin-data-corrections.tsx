@@ -469,16 +469,59 @@ export function AdminDataCorrections() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      // Update the original data
-      const { error: updateError } = await supabase
-        .from(selectedReport.data_table!)
-        .update({
-          ...editFormData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedReport.data_id)
+      console.log('Admin editing data:', {
+        user_id: user.id,
+        user_email: user.email,
+        table: selectedReport.data_table,
+        data_id: selectedReport.data_id,
+        editFormData: editFormData
+      })
 
-      if (updateError) throw updateError
+      // First, let's verify admin permissions
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError) {
+        console.error('Profile check error:', profileError)
+        throw new Error(`Profile verification failed: ${profileError.message}`)
+      }
+
+      console.log('User profile:', profileData)
+
+      if (!profileData || !['admin', 'super_admin'].includes(profileData.role)) {
+        throw new Error(`Insufficient permissions. User role: ${profileData?.role || 'none'}`)
+      }
+
+      // Prepare update data
+      const updateData = {
+        ...editFormData,
+        updated_at: new Date().toISOString()
+      }
+
+      console.log('Attempting to update with data:', updateData)
+
+      // Update the original data
+      const { data: updateResult, error: updateError } = await supabase
+        .from(selectedReport.data_table!)
+        .update(updateData)
+        .eq('id', selectedReport.data_id)
+        .select()
+
+      if (updateError) {
+        console.error('Update error details:', {
+          error: updateError,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code
+        })
+        throw new Error(`Database update failed: ${updateError.message}${updateError.hint ? ` (${updateError.hint})` : ''}`)
+      }
+
+      console.log('Update successful:', updateResult)
 
       // Update the correction report status to "implemented"
       const { error: statusError } = await supabase
@@ -491,7 +534,10 @@ export function AdminDataCorrections() {
         })
         .eq('id', selectedReport.id)
 
-      if (statusError) throw statusError
+      if (statusError) {
+        console.error('Status update error:', statusError)
+        throw new Error(`Status update failed: ${statusError.message}`)
+      }
 
       toast({
         title: "Changes Applied",
@@ -503,9 +549,24 @@ export function AdminDataCorrections() {
       loadReports()
     } catch (error) {
       console.error('Error saving edited data:', error)
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to save changes."
+      if (error instanceof Error) {
+        if (error.message.includes('permission')) {
+          errorMessage = "Permission denied. Please ensure you have admin access."
+        } else if (error.message.includes('authentication')) {
+          errorMessage = "Authentication failed. Please log in again."
+        } else if (error.message.includes('not found')) {
+          errorMessage = "Data not found. The record may have been deleted."
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: "Save Failed",
-        description: "Failed to save changes.",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
@@ -1316,4 +1377,4 @@ export function AdminDataCorrections() {
       </Dialog>
     </div>
   )
-} 
+}
