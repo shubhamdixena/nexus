@@ -36,13 +36,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // For API routes (except auth and profile), allow them to handle their own authentication
-  if (pathname.startsWith("/api/") && 
-      !pathname.startsWith("/api/auth") && 
-      !pathname.startsWith("/api/profile")) {
-    return NextResponse.next()
-  }
-
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -230,5 +223,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
 }

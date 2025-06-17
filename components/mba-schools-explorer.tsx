@@ -32,6 +32,7 @@ import { MBASchoolRealtimeService } from "@/lib/realtime-services"
 import type { MBASchool } from "@/types"
 import { useBookmarks } from "@/hooks/use-bookmarks"
 import { MBASchoolComparisonModal } from "@/components/mba-school-comparison-modal"
+import { CompareButton } from "@/components/compare-button"
 
 export function MBASchoolsExplorer() {
   const [showFilters, setShowFilters] = useState(false)
@@ -569,10 +570,10 @@ function MBASchoolCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-lg font-bold line-clamp-1">{school.name}</h3>
+            <h3 className="text-lg font-bold line-clamp-1">{school.business_school || school.name || 'MBA School'}</h3>
             <div className="flex items-center text-sm text-muted-foreground mt-1">
               <MapPin className="h-3.5 w-3.5 mr-1" />
-              <span>{school.location}, {school.country}</span>
+              <span>{school.location}{school.country ? `, ${school.country}` : ''}</span>
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onToggleSave}>
@@ -602,7 +603,7 @@ function MBASchoolCard({
             </div>
             <div>
               <span className="text-xs text-muted-foreground block">Tuition</span>
-              <span className="font-medium text-xs">{school.tuition || school.tuition_per_year || 'N/A'}</span>
+              <span className="font-medium text-xs">{school.tuition_total || school.tuition || school.tuition_per_year || 'N/A'}</span>
             </div>
             <div>
               <span className="text-xs text-muted-foreground block">Avg Starting Salary</span>
@@ -630,9 +631,20 @@ function MBASchoolCard({
         </div>
       </CardContent>
       <CardFooter className="flex justify-between border-t pt-3">
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <Link href={`/mba-schools/${school.id}`}>View Full School Program</Link>
+        <Button variant="outline" size="sm" className="flex-1 mr-2" asChild>
+          <Link href={`/mba-schools/${school.id}`}>View Details</Link>
         </Button>
+        <CompareButton 
+          school={{
+            id: school.id,
+            name: school.business_school || school.name || '',
+            type: 'Full-time MBA',
+            location: school.location || '',
+            country: school.country || '',
+            ranking: school.qs_mba_rank || school.ft_global_mba_rank || school.bloomberg_mba_rank || 0
+          }}
+          size="sm"
+        />
       </CardFooter>
     </Card>
   )

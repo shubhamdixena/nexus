@@ -147,7 +147,7 @@ export function ComparisonDrawer() {
                     
                     <div className="pr-6">
                       <h4 className="font-medium text-sm line-clamp-2 mb-1">
-                        {school.name}
+                        {school.business_school || school.name || 'MBA School'}
                       </h4>
                       <p className="text-xs text-muted-foreground mb-2">
                         {school.location}

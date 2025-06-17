@@ -4,14 +4,15 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard-layout'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Globe, Scale, AlertTriangle, ChevronDown } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { ArrowLeft, MapPin, Globe, Scale, AlertTriangle, Circle, DollarSign, CreditCard, FileCheck, CheckCircle2, XCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { CompareButton } from '@/components/compare-button'
+import { ReportDataButton } from '@/components/report-data-button'
+
 
 interface AlumniData {
   id: string
@@ -42,52 +43,37 @@ interface ClassProfileData {
 
 interface MBASchool {
   id: string
-  name: string
-  description: string
+  business_school: string
   location: string
-  country: string
-  type: string
   class_size: number
-  women_percentage: number
-  mean_gmat: number
-  mean_gpa: number
-  avg_gre: number
-  avg_work_exp_years: number
-  avg_starting_salary: string
-  total_cost: string
-  application_deadlines: string
-  application_deadlines_structured: Array<{round: string, date: string}>
-  application_fee: string
-  gmat_gre_waiver_available: boolean
-  class_profile: string
-  admissions_rounds: string
-  qs_mba_rank: number
-  ft_global_mba_rank: number
-  bloomberg_mba_rank: number
-  employment_in_3_months_percent: number
-  weighted_salary: string
-  top_hiring_companies: string
-  top_hiring_companies_array: string[]
-  alumni_network_strength: string
-  notable_alumni: string
-  notable_alumni_structured: Array<{name: string, title: string}>
-  program_tags: string[]
-  specializations: string[]
-  status: string
-  created_at: string
-  updated_at: string
-  R1: string
-  R2: string
-  R3: string
-  R4: string
-  R5: string
-  international_percentage: number
-  alumni_data: AlumniData[]
-  class_profile_data: ClassProfileData
+  women?: number
+  avg_gmat?: number
+  avg_gpa?: string
+  avg_gre?: number
+  avg_work_exp_years?: string
+  avg_starting_salary?: string
+  tuition_total?: string
+  application_fee?: string
+  r1_deadline?: string
+  r2_deadline?: string
+  r3_deadline?: string
+  ft_global_mba_rank?: number
+  qs_mba_rank?: number
+  bloomberg_mba_rank?: number
+  employment_in_3_months_percent?: number
+  top_hiring_companies?: string
+  alumni_network_strength?: string
+  program_duration?: string
+  stem_designation?: string
+  international_students?: number
+  weighted_salary_usd?: string
   alumnus_1?: string
   alumnus_2?: string
   alumnus_3?: string
   alumnus_4?: string
+  core_curriculum?: string
+  credits_required?: string
+  key_features?: string
 }
 
 const formatCurrency = (value: string | null | undefined) => {
@@ -111,12 +97,46 @@ const formatValue = (value: any) => {
   return value
 }
 
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString || dateString === 'N/A') return dateString || 'N/A'
+  
+  try {
+    // Handle different date formats
+    let date: Date
+    
+    // Try parsing various formats
+    if (dateString.includes('/')) {
+      // MM/DD/YYYY or DD/MM/YYYY
+      date = new Date(dateString)
+    } else if (dateString.includes('-')) {
+      // YYYY-MM-DD
+      date = new Date(dateString)
+    } else {
+      // Assume it's already in a readable format
+      return dateString
+    }
+    
+    if (isNaN(date.getTime())) {
+      return dateString // Return original if parsing fails
+    }
+    
+    // Format as "12 July 2024"
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+  } catch (error) {
+    return dateString // Return original if any error occurs
+  }
+}
+
 export default function MBASchoolDetailsPage() {
   const params = useParams()
   const [school, setSchool] = useState<MBASchool | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isCombinedCardCollapsed, setIsCombinedCardCollapsed] = useState(true)
+
 
   useEffect(() => {
     async function fetchSchool() {
@@ -141,9 +161,7 @@ export default function MBASchoolDetailsPage() {
     }
   }, [params.id])
 
-  const toggleCombinedCard = () => {
-    setIsCombinedCardCollapsed(!isCombinedCardCollapsed)
-  }
+
 
   if (loading) {
     return (
@@ -188,10 +206,17 @@ export default function MBASchoolDetailsPage() {
           {/* University Information Card */}
           <Card className="lg:col-span-2">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xl md:text-2xl">{formatValue(school?.name)}</CardTitle>
+              <CardTitle className="text-xl md:text-2xl">
+                {formatValue(school?.business_school)}
+              </CardTitle>
               <div className="text-sm text-muted-foreground">
                 Full-time MBA • Located in {school?.location}
               </div>
+              {school?.key_features && (
+                <div className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  {school.key_features}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 mb-4">
@@ -203,14 +228,26 @@ export default function MBASchoolDetailsPage() {
                   <Globe className="h-3 w-3" />
                   Visit Website
                 </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <Scale className="h-3 w-3" />
-                  Compare
-                </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  Report Issue
-                </Button>
+                <CompareButton 
+                  school={{
+                    id: school.id,
+                    name: school?.business_school || '',
+                    type: 'Full-time MBA',
+                    location: school?.location || '',
+                    country: '',
+                    ranking: school?.qs_mba_rank || school?.ft_global_mba_rank || school?.bloomberg_mba_rank || 0
+                  }}
+                  variant="outline"
+                  size="sm"
+                />
+                <ReportDataButton
+                  dataType="mba_school"
+                  dataId={school.id}
+                  dataTable="mba_schools"
+                  currentData={school}
+                  variant="outline"
+                  size="sm"
+                />
               </div>
             </CardContent>
           </Card>
@@ -266,91 +303,7 @@ export default function MBASchoolDetailsPage() {
           </Card>
         </div>
 
-        {/* Program Overview & Tuition - Collapsible Section */}
-        <Card>
-          <Collapsible open={!isCombinedCardCollapsed} onOpenChange={(open) => setIsCombinedCardCollapsed(!open)}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-4 h-auto">
-                <CardTitle className="text-xl">Program Overview & Tuition</CardTitle>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 transition-transform duration-200",
-                    isCombinedCardCollapsed ? "-rotate-90" : "rotate-0"
-                  )}
-                />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Program Details */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Program Details</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium text-muted-foreground">Type</span>
-                          <span className="font-semibold">{formatValue(school?.type)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium text-muted-foreground">Duration</span>
-                          <span className="font-semibold">{school?.type === 'Full-time' ? '2 years' : school?.type === 'Part-time' ? '3-4 years' : '1-2 years'}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium text-muted-foreground">Start Date</span>
-                          <span className="font-semibold">{school?.R1 ? 'September/January' : 'September'}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium text-muted-foreground">Class Size</span>
-                          <span className="font-semibold">{formatValue(school?.class_size)} {school?.class_size ? 'students' : ''}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="font-medium text-muted-foreground">Location</span>
-                          <span className="font-semibold">{school?.location && school?.country ? `${school.location}, ${school.country}` : formatValue(school?.location)}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
 
-                  {/* Tuition & Fees */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Tuition & Fees</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium text-muted-foreground">Total Cost</span>
-                          <span className="font-semibold">{formatCurrency(school?.total_cost)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium text-muted-foreground">Application Fee</span>
-                          <span className="font-semibold">{formatCurrency(school?.application_fee)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium text-muted-foreground">GMAT Waiver</span>
-                          <Badge variant={school?.gmat_gre_waiver_available ? "default" : "secondary"}>
-                            {school?.gmat_gre_waiver_available ? "✓ Available" : "✗ Not Available"}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium text-muted-foreground">Avg Work Exp</span>
-                          <span className="font-semibold">{formatValue(school?.avg_work_exp_years)} {school?.avg_work_exp_years ? 'years' : ''}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="font-medium text-muted-foreground">Women %</span>
-                          <span className="font-semibold">{formatValue(school?.women_percentage)}{school?.women_percentage ? '%' : ''}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
 
         {/* Main Content with Tabs */}
         <Card className="flex-1 flex flex-col min-h-0">
@@ -365,83 +318,230 @@ export default function MBASchoolDetailsPage() {
 
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
               <TabsContent value="overview" className="p-4 md:p-6 m-0 h-full">
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-sm leading-relaxed text-gray-700">
-                      {formatValue(school.description)}
-                    </p>
-                  </div>
-                  
-                  {(school.program_tags?.length > 0 || school.specializations?.length > 0) && (
-                    <div className="flex flex-wrap gap-2">
-                      {school.program_tags?.map((tag, index) => (
-                        <Badge key={index} variant="default" className="bg-blue-100 text-blue-800">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {school.specializations?.map((spec, index) => (
-                        <Badge key={index} variant="secondary">
-                          {spec}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                  
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Program Details */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Program Details</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Program Type</label>
+                            <div className="mt-1">
+                              <Badge variant="secondary" className="text-sm">
+                                {school?.type?.replace('MBA', '').trim() || 'Full-time'}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Duration Options</label>
+                            <div className="mt-1 flex flex-wrap gap-2">
+                              {school?.program_duration ? (
+                                school.program_duration.includes('or') || school.program_duration.includes(';') ? (
+                                  school.program_duration.split(/[;,]|or/).map((duration, index) => (
+                                    <Badge key={index} variant="outline" className="text-xs">
+                                      {duration.trim()}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <Badge variant="outline" className="text-xs">
+                                    {school.program_duration}
+                                  </Badge>
+                                )
+                              ) : (
+                                <Badge variant="outline" className="text-xs">
+                                  {school?.type === 'Full-time' ? '2 years' : school?.type === 'Part-time' ? '3-4 years' : '1-2 years'}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Credits Required</label>
+                            <div className="mt-1">
+                              <span className="text-lg font-medium">{formatValue(school?.credits_required)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Curriculum Overview</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-medium mb-2">Core Curriculum</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Comprehensive foundational courses covering essential business disciplines including finance, marketing, operations, strategy, and leadership. Data will be populated soon.
-                          </p>
+                    {/* Key Features */}
+                    {school?.key_features && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Key Features</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {school.key_features.includes(',') ? (
+                              <div className="grid grid-cols-1 gap-3">
+                                {school.key_features.split(',').map((feature, index) => (
+                                  <div key={index} className="flex items-start space-x-3">
+                                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                    <span className="text-sm text-muted-foreground">{feature.trim()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-start space-x-3">
+                                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                  {school.key_features}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* Core Curriculum */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Core Curriculum</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {school?.core_curriculum ? (
+                            school.core_curriculum.includes(',') ? (
+                              <div className="grid grid-cols-1 gap-3">
+                                {school.core_curriculum.split(',').map((course, index) => (
+                                  <div key={index} className="flex items-start space-x-3">
+                                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                    <span className="text-sm text-muted-foreground">{course.trim()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-start space-x-3">
+                                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                  {school.core_curriculum}
+                                </p>
+                              </div>
+                            )
+                          ) : (
+                            <div className="flex items-start space-x-3">
+                              <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                Comprehensive foundational courses covering essential business disciplines including finance, marketing, operations, strategy, and leadership.
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <h4 className="font-medium mb-2">Electives & Specializations</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Wide range of elective courses and specialized tracks to customize your MBA experience. Detailed information coming soon.
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="font-medium mb-2">Experiential Learning</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Hands-on projects, internships, and consulting opportunities to apply classroom knowledge in real-world settings.
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Specializations */}
+                    {(school.specializations && school.specializations.length > 0) && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Specializations</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex flex-wrap gap-2">
+                            {school.specializations.map((spec, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {spec}
+                              </Badge>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="admissions" className="p-4 md:p-6 m-0 h-full">
                 <div className="space-y-6">
+                  {/* Tuition & Fees */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <DollarSign className="h-5 w-5" />
+                        Tuition & Fees
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-muted/50 rounded-lg p-4 text-center">
+                          <div className="flex items-center justify-center mb-2">
+                            <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
+                            <span className="text-sm font-medium text-muted-foreground">Total Cost</span>
+                          </div>
+                          <div className="text-2xl font-bold">{formatCurrency(school?.tuition_total || school?.total_cost)}</div>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-4 text-center">
+                          <div className="flex items-center justify-center mb-2">
+                            <CreditCard className="h-4 w-4 text-muted-foreground mr-1" />
+                            <span className="text-sm font-medium text-muted-foreground">Application Fee</span>
+                          </div>
+                          <div className="text-2xl font-bold">{formatCurrency(school?.application_fee)}</div>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-4 text-center">
+                          <div className="flex items-center justify-center mb-2">
+                            <FileCheck className="h-4 w-4 text-muted-foreground mr-1" />
+                            <span className="text-sm font-medium text-muted-foreground">GMAT/GRE Waiver</span>
+                          </div>
+                          <div className="flex items-center justify-center">
+                            {school?.gmat_gre_waiver_available ? (
+                              <Badge variant="default" className="flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Available
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <XCircle className="h-3 w-3" />
+                                Not Available
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader>
                       <CardTitle>Application Deadlines</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {school.R1 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                        {(school.r1_deadline || school.R1) && (
                           <div className="p-4 bg-muted rounded-lg text-center">
                             <div className="font-medium text-base mb-1">Round 1</div>
-                            <div className="text-sm text-muted-foreground">{school.R1}</div>
+                            <div className="text-sm text-muted-foreground">{formatDate(school.r1_deadline || school.R1)}</div>
                           </div>
                         )}
-                        {school.R2 && (
+                        {(school.r2_deadline || school.R2) && (
                           <div className="p-4 bg-muted rounded-lg text-center">
                             <div className="font-medium text-base mb-1">Round 2</div>
-                            <div className="text-sm text-muted-foreground">{school.R2}</div>
+                            <div className="text-sm text-muted-foreground">{formatDate(school.r2_deadline || school.R2)}</div>
                           </div>
                         )}
-                        {school.R3 && (
+                        {(school.r3_deadline || school.R3) && (
                           <div className="p-4 bg-muted rounded-lg text-center">
                             <div className="font-medium text-base mb-1">Round 3</div>
-                            <div className="text-sm text-muted-foreground">{school.R3}</div>
+                            <div className="text-sm text-muted-foreground">{formatDate(school.r3_deadline || school.R3)}</div>
+                          </div>
+                        )}
+                        {(school.r4_deadline || school.R4) && (
+                          <div className="p-4 bg-muted rounded-lg text-center">
+                            <div className="font-medium text-base mb-1">Round 4</div>
+                            <div className="text-sm text-muted-foreground">{formatDate(school.r4_deadline || school.R4)}</div>
+                          </div>
+                        )}
+                        {(school.r5_deadline || school.R5) && (
+                          <div className="p-4 bg-muted rounded-lg text-center">
+                            <div className="font-medium text-base mb-1">Round 5</div>
+                            <div className="text-sm text-muted-foreground">{formatDate(school.r5_deadline || school.R5)}</div>
                           </div>
                         )}
                       </div>
@@ -493,31 +593,25 @@ export default function MBASchoolDetailsPage() {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Essay Questions</CardTitle>
+                        <CardTitle className="text-lg">Application Information</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
                           <div>
-                            <h4 className="font-medium mb-2">Essay 1: Leadership & Impact</h4>
+                            <h4 className="font-medium mb-2">Application Fee</h4>
                             <p className="text-sm text-muted-foreground">
-                              Describe a time when you took initiative and led a team or project. What was the outcome and what did you learn about leadership? (500 words)
+                              {formatCurrency(school?.application_fee)}
                             </p>
                           </div>
                           <div>
-                            <h4 className="font-medium mb-2">Essay 2: Career Goals</h4>
+                            <h4 className="font-medium mb-2">Admissions Rounds</h4>
                             <p className="text-sm text-muted-foreground">
-                              What are your short-term and long-term career goals? How will this MBA program help you achieve them? (400 words)
-                            </p>
-                          </div>
-                          <div>
-                            <h4 className="font-medium mb-2">Essay 3: Why This School</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Why are you interested in this particular MBA program? What specific resources, experiences, or opportunities attract you? (300 words)
+                              {formatValue(school?.admissions_rounds || `${school?.r1_deadline ? 'Round 1' : ''}${school?.r2_deadline ? ', Round 2' : ''}${school?.r3_deadline ? ', Round 3' : ''}${school?.r4_deadline ? ', Round 4' : ''}${school?.r5_deadline ? ', Round 5' : ''}` || 'Multiple rounds available')}
                             </p>
                           </div>
                           <div className="mt-4 p-3 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">
-                              <strong>Note:</strong> Specific essay questions for each school will be updated with actual requirements. Please check the official school website for current prompts.
+                              <strong>Note:</strong> For specific essay questions, application requirements, and current deadlines, please check the official school website.
                             </p>
                           </div>
                         </div>
@@ -544,7 +638,7 @@ export default function MBASchoolDetailsPage() {
                           <div className="text-sm text-muted-foreground mt-1">Avg Starting Salary</div>
                         </div>
                         <div className="text-center p-4 bg-muted rounded-lg">
-                          <div className="text-2xl font-bold">{formatCurrency(school.weighted_salary)}</div>
+                          <div className="text-2xl font-bold">{formatCurrency(school.weighted_salary_usd || school.weighted_salary)}</div>
                           <div className="text-sm text-muted-foreground mt-1">Weighted Salary</div>
                         </div>
                         <div className="text-center p-4 bg-muted rounded-lg">
@@ -585,11 +679,15 @@ export default function MBASchoolDetailsPage() {
                     <CardContent>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                         <div className="text-center">
-                          <div className="text-3xl font-bold mb-2">{formatValue(school.international_percentage)}%</div>
+                          <div className="text-3xl font-bold mb-2">
+                            {formatValue(school.international_students || school.international_percentage)}{(school.international_students || school.international_percentage) ? '%' : ''}
+                          </div>
                           <div className="text-sm text-muted-foreground">International</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-3xl font-bold mb-2">{formatValue(school.women_percentage)}%</div>
+                          <div className="text-3xl font-bold mb-2">
+                            {formatValue(school.women || school.women_percentage)}{(school.women || school.women_percentage) ? '%' : ''}
+                          </div>
                           <div className="text-sm text-muted-foreground">Women</div>
                         </div>
                         <div className="text-center">
@@ -615,11 +713,11 @@ export default function MBASchoolDetailsPage() {
                           <div className="text-sm text-muted-foreground mt-1">Mean GPA</div>
                         </div>
                         <div className="text-center p-4 bg-muted rounded-lg">
-                          <div className="text-2xl font-bold">{formatValue(school.avg_gre)}</div>
+                          <div className="text-2xl font-bold">{formatValue(school.avg_gre || 'N/A')}</div>
                           <div className="text-sm text-muted-foreground mt-1">Average GRE</div>
                         </div>
                         <div className="text-center p-4 bg-muted rounded-lg">
-                          <div className="text-2xl font-bold">{formatValue(school.avg_work_exp_years)}</div>
+                          <div className="text-2xl font-bold">{formatValue(school.avg_work_exp_years)} {school.avg_work_exp_years ? 'yrs' : ''}</div>
                           <div className="text-sm text-muted-foreground mt-1">Avg Work Experience</div>
                         </div>
                       </div>
@@ -629,13 +727,48 @@ export default function MBASchoolDetailsPage() {
               </TabsContent>
 
               <TabsContent value="alumni" className="p-4 md:p-6 m-0 h-full">
-                <div className="space-y-8">
+                <div className="space-y-6">
                   <Card>
                     <CardHeader>
                       <CardTitle>Notable Alumni</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {(() => {
+                        // First check if we have real-time alumni data
+                        if (school.alumni_data && school.alumni_data.length > 0) {
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {school.alumni_data
+                                .sort((a, b) => (a.alumni_order || 0) - (b.alumni_order || 0))
+                                .map((alumnus, index) => (
+                                  <Card key={alumnus.id || index} className="hover:shadow-md transition-shadow">
+                                    <CardContent className="p-4">
+                                      <div className="space-y-3">
+                                        <div>
+                                          <h4 className="font-semibold text-lg text-gray-900">{alumnus.name}</h4>
+                                          <p className="text-sm text-muted-foreground">
+                                            {alumnus.position} at {alumnus.company}
+                                          </p>
+                                        </div>
+                                        {alumnus.description && (
+                                          <p className="text-sm text-gray-600 leading-relaxed">{alumnus.description}</p>
+                                        )}
+                                        {alumnus.notable_achievements && (
+                                          <div className="flex flex-wrap gap-1">
+                                            <Badge variant="secondary" className="text-xs">
+                                              {alumnus.notable_achievements}
+                                            </Badge>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                            </div>
+                          );
+                        }
+                        
+                        // Fallback to static alumni fields
                         const alumniList = [
                           school.alumnus_1,
                           school.alumnus_2, 
@@ -644,27 +777,35 @@ export default function MBASchoolDetailsPage() {
                         ].filter(Boolean);
                         
                         return alumniList.length > 0 ? (
-                          <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {alumniList.map((alumnus, index) => {
                               if (!alumnus) return null;
                               const match = alumnus.match(/^([^(]+)\s*\(([^)]+)\)$/);
                               if (match) {
                                 return (
-                                  <div key={index} className="flex flex-col sm:flex-row sm:items-center">
-                                    <span className="font-semibold sm:mr-2">{match[1].trim()}</span>
-                                    <span className="text-muted-foreground text-sm sm:text-base">— {match[2].trim()}</span>
-                                  </div>
+                                  <Card key={index} className="hover:shadow-md transition-shadow">
+                                    <CardContent className="p-4">
+                                      <div className="space-y-2">
+                                        <h4 className="font-semibold text-gray-900">{match[1].trim()}</h4>
+                                        <p className="text-sm text-muted-foreground">{match[2].trim()}</p>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
                                 );
                               }
                               return (
-                                <div key={index} className="flex items-start">
-                                  <span className="font-semibold">{alumnus.trim()}</span>
-                                </div>
+                                <Card key={index} className="hover:shadow-md transition-shadow">
+                                  <CardContent className="p-4">
+                                    <h4 className="font-semibold text-gray-900">{alumnus.trim()}</h4>
+                                  </CardContent>
+                                </Card>
                               );
                             })}
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground">No alumni information available</p>
+                          <div className="text-center py-8">
+                            <p className="text-muted-foreground">No alumni information available</p>
+                          </div>
                         );
                       })()}
                     </CardContent>

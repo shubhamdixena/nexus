@@ -90,19 +90,57 @@ export function ReportDataButton({
         ]
       case 'mba_school':
         return [
-          createOption('ranking', 'MBA Ranking'),
-          createOption('tuition_per_year', 'Tuition Fees', 'tuition'),
-          createOption('duration', 'Program Duration'),
-          createOption('avg_gmat', 'Average GMAT Score'),
-          createOption('acceptance_rate', 'Acceptance Rate'),
-          createOption('employment_rate', 'Employment Rate'),
+          // Rankings
+          createOption('qs_mba_rank', 'QS MBA Ranking'),
+          createOption('ft_global_mba_rank', 'Financial Times Global MBA Ranking'),
+          createOption('bloomberg_mba_rank', 'Bloomberg MBA Ranking'),
+          
+          // Financials
+          createOption('tuition_total', 'Total Tuition Fees'),
+          createOption('application_fee', 'Application Fee'),
           createOption('avg_starting_salary', 'Average Starting Salary'),
-          createOption('application_deadline', 'Application Deadline'),
+          createOption('weighted_salary_usd', 'Weighted Salary (USD)'),
+          
+          // Academic Requirements
+          createOption('mean_gmat', 'Mean GMAT Score', 'avg_gmat'),
+          createOption('mean_gpa', 'Mean GPA', 'avg_gpa'),
+          createOption('avg_gre', 'Average GRE Score'),
+          createOption('gmat_gre_waiver_available', 'GMAT/GRE Waiver Available'),
+          
+          // Program Details
+          createOption('program_duration', 'Program Duration'),
           createOption('class_size', 'Class Size'),
-          createOption('specializations', 'Specializations'),
-          createOption('website', 'Website URL'),
+          createOption('credits_required', 'Credits Required'),
+          createOption('core_curriculum', 'Core Curriculum'),
+          createOption('stem_designation', 'STEM Designation'),
+          
+          // Deadlines
+          createOption('r1_deadline', 'Round 1 Deadline'),
+          createOption('r2_deadline', 'Round 2 Deadline'),
+          createOption('r3_deadline', 'Round 3 Deadline'),
+          createOption('r4_deadline', 'Round 4 Deadline'),
+          createOption('r5_deadline', 'Round 5 Deadline'),
+          createOption('admissions_rounds', 'Number of Admission Rounds'),
+          
+          // Demographics & Employment
+          createOption('avg_work_exp_years', 'Average Work Experience (Years)'),
+          createOption('women', 'Number of Women'),
+          createOption('international_students', 'International Students'),
+          createOption('employment_in_3_months_percent', 'Employment Rate in 3 Months (%)'),
+          
+          // Alumni & Career
+          createOption('top_hiring_companies', 'Top Hiring Companies'),
+          createOption('alumni_network_strength', 'Alumni Network Strength'),
+          createOption('alumnus_1', 'Notable Alumnus 1'),
+          createOption('alumnus_2', 'Notable Alumnus 2'),
+          createOption('alumnus_3', 'Notable Alumnus 3'),
+          createOption('alumnus_4', 'Notable Alumnus 4'),
+          
+          // Basic Info
+          createOption('business_school', 'Business School Name'),
+          createOption('description', 'School Description'),
           createOption('location', 'Location'),
-          createOption('country', 'Country')
+          createOption('key_features', 'Key Features')
         ]
       case 'scholarship':
         return [
@@ -165,24 +203,30 @@ export function ReportDataButton({
     setSubmitting(true)
 
     try {
+      console.log('Starting form submission...')
+      console.log('Supabase client:', supabase)
+      
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
       if (authError) {
         console.error('Auth error:', authError)
         toast({
           title: "Authentication Error",
-          description: "There was an error checking your authentication status.",
+          description: `There was an error checking your authentication status: ${authError.message}`,
           variant: "destructive"
         })
         return
       }
       
       if (!user) {
+        console.log('No user found, redirecting to sign in...')
         toast({
           title: "Authentication Required",
-          description: "Please sign in to report data issues.",
+          description: "Please sign in to report data issues. You will be redirected to the login page.",
           variant: "destructive"
         })
+        // Redirect to sign in page
+        window.location.href = '/auth/signin'
         return
       }
 
@@ -209,12 +253,33 @@ export function ReportDataButton({
 
       console.log('Submitting report data:', reportData)
 
+      // Test connection first
+      console.log('Testing Supabase connection...')
+      const { data: testData, error: testError } = await supabase
+        .from('profiles')
+        .select('count', { count: 'exact', head: true })
+      
+      if (testError) {
+        console.error('Supabase connection test failed:', testError)
+        toast({
+          title: "Connection Error",
+          description: `Unable to connect to database: ${testError.message}`,
+          variant: "destructive"
+        })
+        return
+      }
+      
+      console.log('Supabase connection test passed')
+
       const { data: insertedData, error } = await supabase
         .from('data_correction_reports')
         .insert([reportData])
         .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Insert error:', error)
+        throw error
+      }
 
       console.log('Report submitted successfully:', insertedData)
 
@@ -253,7 +318,7 @@ export function ReportDataButton({
       
       toast({
         title: "Submission Failed",
-        description: error instanceof Error ? error.message : "There was an error submitting your report. Please try again.",
+        description: `${error instanceof Error ? error.message : "There was an error submitting your report. Please try again."}`,
         variant: "destructive"
       })
     } finally {

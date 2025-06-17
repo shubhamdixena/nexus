@@ -26,9 +26,11 @@ import {
   DollarSign,
   TrendingUp,
   School,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 export interface SchoolTarget {
   id?: string
@@ -80,6 +82,8 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
   const [showOnlyFeatured, setShowOnlyFeatured] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showAddSchool, setShowAddSchool] = useState(false)
+  const [savingTargets, setSavingTargets] = useState<Set<string>>(new Set())
+  const { toast } = useToast()
 
   const supabase = createClient()
 
@@ -95,25 +99,36 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
         .from('mba_schools')
         .select(`
           id,
-          name,
+          business_school,
           location,
-          ranking_tier,
-          difficulty_level,
-          is_featured,
           qs_mba_rank,
           ft_global_mba_rank,
           bloomberg_mba_rank,
           mean_gmat,
           avg_starting_salary,
           tuition_total,
-          class_size,
-          acceptance_rate,
-          website_url
+          class_size
         `)
         .order('qs_mba_rank', { ascending: true, nullsFirst: false })
 
       if (error) throw error
-      setSchools(data || [])
+      
+      // Transform the data to match the expected interface
+      const transformedData = (data || []).map(school => ({
+        ...school,
+        name: school.business_school,
+        ranking_tier: school.qs_mba_rank <= 10 ? 'top-10' : 
+                     school.qs_mba_rank <= 25 ? 'top-25' : 
+                     school.qs_mba_rank <= 50 ? 'top-50' : 
+                     school.qs_mba_rank <= 100 ? 'top-100' : 'unranked',
+        difficulty_level: school.qs_mba_rank <= 25 ? 'high' : 
+                         school.qs_mba_rank <= 50 ? 'medium' : 'low',
+        is_featured: school.qs_mba_rank <= 20,
+        acceptance_rate: undefined,
+        website_url: undefined
+      }))
+      
+      setSchools(transformedData)
     } catch (error) {
       console.error('Error loading schools:', error)
     } finally {
@@ -138,44 +153,146 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
     })
   }, [schools, searchTerm, selectedTier, selectedDifficulty, showOnlyFeatured, value])
 
-  const addSchoolTarget = (school: MBASchool) => {
-    const newTarget: SchoolTarget = {
-      school_id: school.id,
-      school_name: school.name,
-      location: school.location,
-      ranking_tier: school.ranking_tier,
-      priority_score: 5, // Default priority
-      qs_mba_rank: school.qs_mba_rank,
-      ft_global_mba_rank: school.ft_global_mba_rank,
-      bloomberg_mba_rank: school.bloomberg_mba_rank,
-      mean_gmat: school.mean_gmat,
-      avg_starting_salary: school.avg_starting_salary,
-      tuition_total: school.tuition_total
-    }
-    
-    onChange([...value, newTarget])
-    setSearchTerm("")
-    
-    // Track the activity
-    ActivityLogger.addTargetSchool(school.name, 5)
-  }
+  const addSchoolTarget = async (school: MBASchool) => {
+    setSavingTargets(prev => new Set([...prev, school.id]));
 
-  const removeSchoolTarget = (schoolId: string) => {
+    try {
+      const response = await fetch('/api/school-targets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          school_id: school.id,
+          priority_score: 5,
+        }),
+      });
+
+      if (response.ok) {
+        const { target } = await response.json();
+        onChange([...value, target]);
+        setSearchTerm("");
+        toast({
+          title: "School added!",
+          description: `${school.name} has been added to your target schools.`,
+        });
+        ActivityLogger.addTargetSchool(school.name, 5);
+      } else {
+        const responseText = await response.text();
+        let errorData: { error?: string; details?: string } = {};
+        try {
+          // It's possible the response is not JSON
+          errorData = JSON.parse(responseText);
+        } catch (e) {
+          console.error("Failed to parse error response:", responseText);
+          errorData = { error: `Server returned a non-JSON error (status ${response.status})`, details: responseText };
+        }
+        
+        console.error('Error adding school target:', errorData);
+
+        toast({
+          title: "Error Adding School",
+          description: errorData.error || "An unknown error occurred.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Network or other error:', error);
+      toast({
+        title: "Network Error",
+        description: "Could not connect to the server. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTargets(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(school.id);
+        return newSet;
+      });
+    }
+  };
+
+  const removeSchoolTarget = async (schoolId: string) => {
     const targetToRemove = value.find(target => target.school_id === schoolId)
-    onChange(value.filter(target => target.school_id !== schoolId))
     
-    // Track the activity
-    if (targetToRemove) {
-      ActivityLogger.removeTargetSchool(targetToRemove.school_name)
+    if (targetToRemove && targetToRemove.id) {
+      try {
+        // Remove from database via API
+        const response = await fetch(`/api/school-targets?id=${targetToRemove.id}`, {
+          method: 'DELETE',
+        })
+
+        if (response.ok) {
+          // Update local state
+          onChange(value.filter(target => target.school_id !== schoolId))
+          
+          // Show success toast
+          toast({
+            title: "School removed",
+            description: `${targetToRemove.school_name} has been removed from your target schools.`,
+          })
+          
+          // Track the activity
+          if (targetToRemove) {
+            ActivityLogger.removeTargetSchool(targetToRemove.school_name)
+          }
+        } else {
+          console.error('Error removing school target')
+          
+          // Show error toast
+          toast({
+            title: "Error removing school",
+            description: "Failed to remove school from your targets.",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error('Error removing school target:', error)
+        
+        // Show error toast
+        toast({
+          title: "Error",
+          description: "Network error. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } else {
+      // No ID means it's a local-only target, just remove from state
+      onChange(value.filter(target => target.school_id !== schoolId))
     }
   }
 
-  const updateSchoolTarget = (schoolId: string, updates: Partial<SchoolTarget>) => {
+  const updateSchoolTarget = async (schoolId: string, updates: Partial<SchoolTarget>) => {
+    const targetToUpdate = value.find(target => target.school_id === schoolId)
+    
+    // Update local state immediately for responsive UI
     onChange(value.map(target => 
       target.school_id === schoolId 
         ? { ...target, ...updates }
         : target
     ))
+
+    // Save to database if target has an ID
+    if (targetToUpdate && targetToUpdate.id) {
+      try {
+        const response = await fetch('/api/school-targets', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: targetToUpdate.id,
+            ...updates
+          }),
+        })
+
+        if (!response.ok) {
+          console.error('Error updating school target')
+        }
+      } catch (error) {
+        console.error('Error updating school target:', error)
+      }
+    }
   }
 
   const getRankingDisplay = (school: MBASchool) => {
@@ -456,8 +573,12 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
                   {filteredSchools.map((school) => (
                     <Card 
                       key={school.id} 
-                      className="p-6 hover:shadow-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-all cursor-pointer border-2 border-gray-200 dark:border-gray-800 bg-white dark:bg-black hover:border-black dark:hover:border-white"
-                      onClick={() => addSchoolTarget(school)}
+                      className={`p-6 hover:shadow-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-all border-2 border-gray-200 dark:border-gray-800 bg-white dark:bg-black hover:border-black dark:hover:border-white ${savingTargets.has(school.id) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      onClick={() => {
+                        if (!savingTargets.has(school.id)) {
+                          addSchoolTarget(school)
+                        }
+                      }}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-start gap-4 flex-1">
@@ -515,12 +636,24 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
                               e.stopPropagation()
                               addSchoolTarget(school)
                             }}
+                            disabled={savingTargets.has(school.id)}
                             className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 px-6 py-3"
                           >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add School
+                            {savingTargets.has(school.id) ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Adding...
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add School
+                              </>
+                            )}
                           </Button>
-                          <span className="text-xs text-muted-foreground text-center">Click anywhere to add</span>
+                          <span className="text-xs text-muted-foreground text-center">
+                            {savingTargets.has(school.id) ? "Saving..." : "Click anywhere to add"}
+                          </span>
                         </div>
                       </div>
                     </Card>

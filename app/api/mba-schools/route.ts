@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import type { MBASchool, PaginatedResponse } from "@/types"
+import type { MBASchool, MBASchoolListAPIResponse } from "@/types/mba-school-master"
 
 export async function GET(request: NextRequest) {
   try {
-    // Create client for public read access (no authentication required for browsing MBA schools)
+    // Extract query parameters
+    const url = new URL(request.url)
+    const page = parseInt(url.searchParams.get('page') || '1')
+    const limit = parseInt(url.searchParams.get('limit') || '10')
+    const search = url.searchParams.get('search') || ''
+    const offset = (page - 1) * limit
+
+    // Create Supabase client for public access
+    const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -16,39 +24,20 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "10")
-    const search = searchParams.get("search") || ""
-    const country = searchParams.get("country") || ""
-    const ranking = searchParams.get("ranking") || ""
-    
-    const offset = (page - 1) * limit
-
-    // Select all fields and transform them in JavaScript
+    // Build query
     let query = supabase
-      .from("mba_schools")
-      .select("*", { count: "exact" })
+      .from('mba_schools')
+      .select('*', { count: 'exact' })
 
-    // Update search to use actual database field names
+    // Apply search if provided
     if (search) {
-      query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,description.ilike.%${search}%`)
+      query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
     }
 
-    if (country) {
-      // Since most data seems to be USA, we can filter by location contains
-      query = query.ilike("location", `%${country}%`)
-    }
-
-    if (ranking) {
-      query = query.lte("ft_global_mba_rank", parseInt(ranking))
-    }
-
-    query = query
-      .order("ft_global_mba_rank", { ascending: true, nullsFirst: false })
-      .range(offset, offset + limit - 1)
-
+    // Fetch data with pagination
     const { data, error, count } = await query
+      .order('name')
+      .range(offset, offset + limit - 1)
 
     if (error) {
       console.error("Error fetching MBA schools:", error)
@@ -59,71 +48,53 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform data to match frontend expectations
-    const transformedData = (data || []).map((school: any) => ({
-      // Map database fields to frontend expected fields
-      id: school.id,
-      name: school.name || 'Unknown School',
-      description: school.description,
-      location: school.location || 'USA',
-      country: school.location?.includes('USA') ? 'USA' : 'USA',
-      ranking: school.ft_global_mba_rank || school.qs_mba_rank || school.bloomberg_mba_rank || null,
-      type: 'Full-time MBA',
-      duration: '2 years',
-      tuition: school.tuition_total || null,
-      tuition_per_year: school.tuition_total || null,
-      status: 'active',
+    const transformedData: MBASchool[] = (data || []).map((school: any): MBASchool => ({
+      // Keep all original fields
+      ...school,
       
-      // Academic info
-      class_size: school.class_size || null,
-      women_percentage: school.women_percentage || null,
-      mean_gmat: school.mean_gmat || null,
-      avg_gmat: school.mean_gmat || null,
-      mean_gpa: school.mean_gpa || null,
-      avg_gpa: school.mean_gpa || null,
-      avg_gre: school.avg_gre || null,
-      avg_work_exp_years: school.avg_work_exp_years || null,
+      // Computed/alias fields for backward compatibility
+      avg_gmat: school.mean_gmat,
+      avg_gpa: school.mean_gpa,
+      tuition: school.tuition_total,
+      
+      // Application deadline aliases
+      R1: school.r1_deadline,
+      R2: school.r2_deadline,
+      R3: school.r3_deadline,
+      R4: school.r4_deadline,
+      R5: school.r5_deadline,
+      
+      // Employment aliases
+      employment_rate: school.employment_in_3_months_percent,
+      employment_in_3_months: school.employment_in_3_months_percent ? 
+        `${school.employment_in_3_months_percent}%` : null,
+      
+      // Process top hiring companies into array format
+      top_hiring_companies_array: school.top_hiring_companies 
+        ? school.top_hiring_companies.split(';').map((company: string) => company.trim()).filter((company: string) => company.length > 0)
+        : [],
+        
+      // Default values for missing fields
+      type: school.type || 'Full-time MBA',
+      duration: school.duration || '2 years',
+      status: school.status as 'active' | 'inactive' | 'pending' | null || 'active',
+      
+      // Additional computed fields
+      international_percentage: school.international_students_percentage,
       avg_work_exp: school.avg_work_exp_years ? `${school.avg_work_exp_years} years` : null,
       
-      // Application info
-      application_deadline: school.application_deadlines || null,
-      application_deadlines: school.application_deadlines || null,
-      application_fee: school.application_fee || null,
-      gmat_gre_waiver_available: school.gmat_gre_waiver_available || false,
-      class_profile: school.class_profile || null,
-      admissions_rounds: school.admissions_rounds || null,
+      // Rankings (aliases)
+      qs_rank: school.qs_mba_rank,
+      ft_rank: school.ft_global_mba_rank,
+      bloomberg_rank: school.bloomberg_mba_rank,
       
-      // Rankings
-      qs_mba_rank: school.qs_mba_rank || null,
-      ft_global_mba_rank: school.ft_global_mba_rank || null,
-      bloomberg_mba_rank: school.bloomberg_mba_rank || null,
-      
-      // Employment & Career
-      employment_in_3_months_percent: school.employment_in_3_months_percent || null,
-      employment_in_3_months: school.employment_in_3_months_percent ? `${school.employment_in_3_months_percent}%` : null,
-      employment_rate: school.employment_in_3_months_percent || null,
-      avg_starting_salary: school.avg_starting_salary || null,
-      weighted_salary: school.weighted_salary || null,
-      top_hiring_companies: school.top_hiring_companies || null,
-      
-      // Alumni & Network
-      alumni_network_strength: school.alumni_network_strength || null,
-      notable_alumni: school.notable_alumni || null,
-      
-      // Additional fields
-      international_students_percentage: school.international_students_percentage || null,
-      international_students: school.international_students_percentage ? `${school.international_students_percentage}%` : null,
-      
-      // Timestamps
-      created_at: school.created_at,
-      updated_at: school.updated_at,
-      
-      // Keep original fields for compatibility
-      ...school
+      // Combined ranking (best available)
+      ranking: school.ft_global_mba_rank || school.qs_mba_rank || school.bloomberg_mba_rank || school.ranking
     }))
 
     const totalPages = Math.ceil((count || 0) / limit)
 
-    const response: PaginatedResponse<MBASchool> = {
+    const response: MBASchoolListAPIResponse = {
       data: transformedData,
       pagination: {
         page,

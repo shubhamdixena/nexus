@@ -25,68 +25,13 @@ export interface University {
   graduate_programs?: string[] | null
 }
 
-export interface MBASchool {
-  id: string
-  name: string
-  location: string
-  country: string
-  
-  // ❌ NO university_id - completely independent
-  
-  // Rich MBA-specific data
-  ranking?: number | null                    // MBA-specific ranking
-  classification?: string | null             // M7, T15, Top 30
-  type: string                              // Full-time, Part-time, Executive
-  duration?: string | null
-  tuition?: string | null
-  total_cost?: string | null
-  
-  // Admission requirements
-  avg_gmat?: number | null
-  gmat_range?: string | null
-  avg_gpa?: number | null
-  work_experience_requirement?: string | null
-  application_requirements?: string | null
-  application_deadline?: string | null
-  
-  // Program details
-  class_size?: number | null
-  specializations?: string[] | null
-  teaching_methodology?: string | null
-  format?: string | null
-  year1_courses?: string | null
-  year2_courses?: string | null
-  
-  // Career outcomes
-  acceptance_rate?: number | null
-  employment_rate?: number | null
-  avg_starting_salary?: string | null
-  top_industries?: string | null
-  top_recruiters?: string[] | null
-  top_hiring_companies?: string | null
-  
-  // Program experience
-  global_focus?: string | null
-  international_students?: string | null
-  alumni_network?: string | null
-  campus_life?: string | null
-  career_services?: string | null
-  student_clubs?: string | null
-  housing_options?: string | null
-  
-  // Additional details
-  faculty_size?: string | null
-  research_centers?: string | null
-  notable_alumni?: string | null
-  scholarships_available?: string | null
-  interview_process?: string | null
-  
-  // Meta fields
-  status?: string | null
-  description?: string | null
-  website?: string | null
-  created_at: string
-  updated_at: string
+// Import the master MBA School type definition
+import type { MBASchool as MasterMBASchool } from './mba-school-master'
+
+// Use the master definition for independent entities
+export interface MBASchool extends MasterMBASchool {
+  // Add any independent entity specific fields if needed
+  // This ensures complete compatibility with all database fields
 }
 
 // Independent application types

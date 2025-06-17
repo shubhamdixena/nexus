@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { MBASchoolRealtimeService, type MBASchool } from '@/lib/realtime-services'
+import { MBASchoolRealtimeService } from '@/lib/realtime-services'
+import type { MBASchool } from '@/types'
 
 interface MBASchoolComparisonModalProps {
   trigger?: React.ReactNode
@@ -38,9 +39,9 @@ export function MBASchoolComparisonModal({ trigger }: MBASchoolComparisonModalPr
       setFilteredSchools(schools)
     } else {
       const filtered = schools.filter(school =>
-        school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        school.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        school.country.toLowerCase().includes(searchQuery.toLowerCase())
+        (school.business_school || school.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (school.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (school.country || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
       setFilteredSchools(filtered)
     }
@@ -50,8 +51,7 @@ export function MBASchoolComparisonModal({ trigger }: MBASchoolComparisonModalPr
     try {
       setLoading(true)
       const response = await MBASchoolRealtimeService.getMBASchools({ 
-        limit: 100,
-        orderBy: 'ranking'
+        limit: 100
       })
       
       if (response && response.data) {
@@ -134,10 +134,10 @@ export function MBASchoolComparisonModal({ trigger }: MBASchoolComparisonModalPr
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <CardTitle className="text-sm line-clamp-1">{school.name}</CardTitle>
+                        <CardTitle className="text-sm line-clamp-1">{school.business_school || school.name || 'MBA School'}</CardTitle>
                         <div className="flex items-center text-xs text-muted-foreground">
                           <MapPin className="h-3 w-3 mr-1" />
-                          {school.location}, {school.country}
+                          {school.location || 'Unknown Location'}{school.country ? `, ${school.country}` : ''}
                         </div>
                       </div>
                       <Button
@@ -215,10 +215,10 @@ export function MBASchoolComparisonModal({ trigger }: MBASchoolComparisonModalPr
                           <div className="flex-1 space-y-2">
                             <div className="flex items-start gap-3">
                               <div className="flex-1">
-                                <h4 className="font-semibold text-sm line-clamp-1">{school.name}</h4>
+                                <h4 className="font-semibold text-sm line-clamp-1">{school.business_school || school.name || 'MBA School'}</h4>
                                 <div className="flex items-center text-xs text-muted-foreground mt-1">
                                   <MapPin className="h-3 w-3 mr-1" />
-                                  {school.location}, {school.country}
+                                  {school.location || 'Unknown Location'}{school.country ? `, ${school.country}` : ''}
                                 </div>
                               </div>
                               {school.ranking && (

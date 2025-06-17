@@ -167,11 +167,12 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
       <div className="space-y-4">
         <EnhancedSchoolSelector
           value={data.schoolTargets || []}
-          onChange={(targets) => {
-            onSave({ schoolTargets: targets })
-          }}
+          onChange={onSave}
           userId={userId}
         />
+        <p className="text-sm text-muted-foreground mt-2">
+          Changes to your target schools are saved automatically.
+        </p>
       </div>
     )
   }

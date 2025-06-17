@@ -9,6 +9,146 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      data_correction_reports: {
+        Row: {
+          additional_notes: string | null
+          admin_notes: string | null
+          created_at: string
+          current_value: string | null
+          data_id: string | null
+          data_table: string | null
+          data_type: string
+          description: string
+          evidence_urls: string[] | null
+          field_name: string | null
+          id: string
+          implementation_notes: string | null
+          issue_type: string
+          priority: string
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          suggested_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          current_value?: string | null
+          data_id?: string | null
+          data_table?: string | null
+          data_type: string
+          description: string
+          evidence_urls?: string[] | null
+          field_name?: string | null
+          id?: string
+          implementation_notes?: string | null
+          issue_type: string
+          priority?: string
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggested_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_notes?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          current_value?: string | null
+          data_id?: string | null
+          data_table?: string | null
+          data_type?: string
+          description?: string
+          evidence_urls?: string[] | null
+          field_name?: string | null
+          id?: string
+          implementation_notes?: string | null
+          issue_type?: string
+          priority?: string
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggested_value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      data_correction_analytics: {
+        Row: {
+          data_table: string | null
+          data_type: string
+          field_name: string | null
+          id: string
+          issue_type: string
+          last_reported: string
+          report_count: number
+        }
+        Insert: {
+          data_table?: string | null
+          data_type: string
+          field_name?: string | null
+          id?: string
+          issue_type: string
+          last_reported?: string
+          report_count?: number
+        }
+        Update: {
+          data_table?: string | null
+          data_type?: string
+          field_name?: string | null
+          id?: string
+          issue_type?: string
+          last_reported?: string
+          report_count?: number
+        }
+        Relationships: []
+      }
+      data_correction_history: {
+        Row: {
+          action: string
+          correction_id: string
+          created_at: string
+          id: string
+          new_status: string | null
+          notes: string | null
+          old_status: string | null
+          performed_by: string
+        }
+        Insert: {
+          action: string
+          correction_id: string
+          created_at?: string
+          id?: string
+          new_status?: string | null
+          notes?: string | null
+          old_status?: string | null
+          performed_by: string
+        }
+        Update: {
+          action?: string
+          correction_id?: string
+          created_at?: string
+          id?: string
+          new_status?: string | null
+          notes?: string | null
+          old_status?: string | null
+          performed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_correction_history_correction_id_fkey"
+            columns: ["correction_id"]
+            isOneToOne: false
+            referencedRelation: "data_correction_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           id: string
@@ -206,68 +346,257 @@ export interface Database {
       }
       mba_schools: {
         Row: {
+          // Primary fields
           id: string
-          name: string
-          type: string
-          location: string
-          country: string
-          ranking: number | null
-          duration: string | null
-          tuition: string | null
-          total_cost: string | null
-          description: string | null
-          website: string | null
-          university_id: string | null
-          category: string | null
-          specializations: string[] | null
-          program_duration: string | null
-          avg_gmat: number | null
-          avg_work_experience: string | null
-          acceptance_rate: number | null
+          number?: number | null
+          business_school?: string | null
+          name?: string | null
+          description?: string | null
+          location?: string | null
+          country?: string | null
+          website?: string | null
+          
+          // Class demographics
+          class_size?: number | null
+          women?: number | null
+          women_percentage?: number | null
+          international_students?: string | null
+          international_students_percentage?: number | null
+          
+          // Test scores and academic requirements
+          mean_gmat?: number | null
+          mean_gpa?: number | null
+          avg_gre?: number | null
+          avg_work_exp_years?: number | null
+          
+          // Financial information
+          avg_starting_salary?: string | null
+          tuition_total?: string | null
+          application_fee?: string | null
+          weighted_salary_usd?: string | null
+          
+          // Application deadlines and rounds
+          r1_deadline?: string | null
+          r2_deadline?: string | null
+          r3_deadline?: string | null
+          r4_deadline?: string | null
+          r5_deadline?: string | null
+          application_deadlines?: string | null
+          gmat_gre_waiver_available?: boolean | null
+          admissions_rounds?: string | null
+          
+          // Rankings
+          qs_mba_rank?: number | null
+          ft_global_mba_rank?: number | null
+          bloomberg_mba_rank?: number | null
+          
+          // Employment statistics
+          employment_in_3_months_percent?: number | null
+          
+          // Companies and industries
+          top_hiring_companies?: string | null
+          
+          // Alumni information
+          alumni_network_strength?: string | null
+          alumnus_1?: string | null
+          alumnus_2?: string | null
+          alumnus_3?: string | null
+          alumnus_4?: string | null
+          
+          // Program details
+          core_curriculum?: string | null
+          program_duration?: string | null
+          credits_required?: string | null
+          key_features?: string | null
+          stem_designation?: boolean | null
+          
+          // Additional application info
+          class_profile?: string | null
+          
+          // Legacy fields for compatibility
+          type?: string | null
+          duration?: string | null
+          tuition?: string | null
+          total_cost?: string | null
+          university_id?: string | null
+          category?: string | null
+          specializations?: string[] | null
+          avg_gmat?: number | null
+          avg_work_experience?: string | null
+          acceptance_rate?: number | null
+          ranking?: number | null
+          
+          // Timestamps
           created_at: string
           updated_at: string
         }
         Insert: {
+          // Primary fields
           id?: string
-          name: string
-          type: string
-          location: string
-          country: string
-          ranking?: number | null
+          number?: number | null
+          business_school?: string | null
+          name?: string | null
+          description?: string | null
+          location?: string | null
+          country?: string | null
+          website?: string | null
+          
+          // Class demographics
+          class_size?: number | null
+          women?: number | null
+          women_percentage?: number | null
+          international_students?: string | null
+          international_students_percentage?: number | null
+          
+          // Test scores and academic requirements
+          mean_gmat?: number | null
+          mean_gpa?: number | null
+          avg_gre?: number | null
+          avg_work_exp_years?: number | null
+          
+          // Financial information
+          avg_starting_salary?: string | null
+          tuition_total?: string | null
+          application_fee?: string | null
+          weighted_salary_usd?: string | null
+          
+          // Application deadlines and rounds
+          r1_deadline?: string | null
+          r2_deadline?: string | null
+          r3_deadline?: string | null
+          r4_deadline?: string | null
+          r5_deadline?: string | null
+          application_deadlines?: string | null
+          gmat_gre_waiver_available?: boolean | null
+          admissions_rounds?: string | null
+          
+          // Rankings
+          qs_mba_rank?: number | null
+          ft_global_mba_rank?: number | null
+          bloomberg_mba_rank?: number | null
+          
+          // Employment statistics
+          employment_in_3_months_percent?: number | null
+          
+          // Companies and industries
+          top_hiring_companies?: string | null
+          
+          // Alumni information
+          alumni_network_strength?: string | null
+          alumnus_1?: string | null
+          alumnus_2?: string | null
+          alumnus_3?: string | null
+          alumnus_4?: string | null
+          
+          // Program details
+          core_curriculum?: string | null
+          program_duration?: string | null
+          credits_required?: string | null
+          key_features?: string | null
+          stem_designation?: boolean | null
+          
+          // Additional application info
+          class_profile?: string | null
+          
+          // Legacy fields for compatibility
+          type?: string | null
           duration?: string | null
           tuition?: string | null
           total_cost?: string | null
-          description?: string | null
-          website?: string | null
           university_id?: string | null
           category?: string | null
           specializations?: string[] | null
-          program_duration?: string | null
           avg_gmat?: number | null
           avg_work_experience?: string | null
           acceptance_rate?: number | null
+          ranking?: number | null
+          
+          // Timestamps
           created_at?: string
           updated_at?: string
         }
         Update: {
+          // Primary fields
           id?: string
-          name?: string
-          type?: string
-          location?: string
-          country?: string
-          ranking?: number | null
+          number?: number | null
+          business_school?: string | null
+          name?: string | null
+          description?: string | null
+          location?: string | null
+          country?: string | null
+          website?: string | null
+          
+          // Class demographics
+          class_size?: number | null
+          women?: number | null
+          women_percentage?: number | null
+          international_students?: string | null
+          international_students_percentage?: number | null
+          
+          // Test scores and academic requirements
+          mean_gmat?: number | null
+          mean_gpa?: number | null
+          avg_gre?: number | null
+          avg_work_exp_years?: number | null
+          
+          // Financial information
+          avg_starting_salary?: string | null
+          tuition_total?: string | null
+          application_fee?: string | null
+          weighted_salary_usd?: string | null
+          
+          // Application deadlines and rounds
+          r1_deadline?: string | null
+          r2_deadline?: string | null
+          r3_deadline?: string | null
+          r4_deadline?: string | null
+          r5_deadline?: string | null
+          application_deadlines?: string | null
+          gmat_gre_waiver_available?: boolean | null
+          admissions_rounds?: string | null
+          
+          // Rankings
+          qs_mba_rank?: number | null
+          ft_global_mba_rank?: number | null
+          bloomberg_mba_rank?: number | null
+          
+          // Employment statistics
+          employment_in_3_months_percent?: number | null
+          
+          // Companies and industries
+          top_hiring_companies?: string | null
+          
+          // Alumni information
+          alumni_network_strength?: string | null
+          alumnus_1?: string | null
+          alumnus_2?: string | null
+          alumnus_3?: string | null
+          alumnus_4?: string | null
+          
+          // Program details
+          core_curriculum?: string | null
+          program_duration?: string | null
+          credits_required?: string | null
+          key_features?: string | null
+          stem_designation?: boolean | null
+          
+          // Additional application info
+          class_profile?: string | null
+          
+          // Legacy fields for compatibility
+          type?: string | null
           duration?: string | null
           tuition?: string | null
           total_cost?: string | null
-          description?: string | null
-          website?: string | null
           university_id?: string | null
           category?: string | null
           specializations?: string[] | null
-          program_duration?: string | null
           avg_gmat?: number | null
           avg_work_experience?: string | null
           acceptance_rate?: number | null
+          ranking?: number | null
+          
+          // Timestamps
           created_at?: string
           updated_at?: string
         }

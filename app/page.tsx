@@ -1,16 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { useActivityTracker } from "@/hooks/use-activity-tracker"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { PerformanceMonitor } from "@/components/performance-monitor"
+// Removed optimized dashboard wrapper imports as we're using simpler components now
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useBookmarks } from "@/hooks/use-bookmarks"
 import Link from "next/link"
 import {
@@ -34,6 +41,23 @@ import {
   BookOpen,
   GraduationCap,
   TrendingUp,
+  DollarSign,
+  Users,
+  Building2,
+  Award,
+  ExternalLink,
+  BarChart3,
+  Globe,
+  Briefcase,
+  Edit3,
+  Eye,
+  MoreHorizontal,
+  Upload,
+  MessageSquare,
+  X,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react"
 
 interface DeadlineItem {
@@ -85,7 +109,7 @@ interface Application {
 }
 
 export default function Home() {
-  const { user, loading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   
   // Track user activity automatically
   useActivityTracker({
@@ -167,6 +191,7 @@ export default function Home() {
         if (profileResponse.status === 'fulfilled' && profileResponse.value.ok) {
           const { profile, completion } = await profileResponse.value.json()
           setProfileData({ ...profile, completion })
+          setIsLoadingProfile(false)
         }
 
         // Process deadlines data
@@ -365,29 +390,9 @@ export default function Home() {
     return applications.filter(app => app.status === 'submitted')
   }
 
-  if (loading || isLoadingProfile) {
-    return (
-      <DashboardLayout>
-        <div className="container mx-auto p-4 md:p-6">
-          <div className="mb-6">
-            <Skeleton className="h-8 w-64 mb-2" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[1,2,3,4,5,6,7].map((i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <Skeleton className="h-24 w-full" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  if (!user) {
+  // Immediately render dashboard structure with static content
+  // and load dynamic content separately
+  if (!user && !authLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -409,470 +414,653 @@ export default function Home() {
   const upcomingDeadlines = getUpcomingDeadlines()
   const submittedApplications = getSubmittedApplications()
 
+
+
+  // Comprehensive application status options
+  const applicationStatuses = [
+    { value: "account_created", label: "Account Created", color: "text-gray-600 bg-gray-100" },
+    { value: "essays_working", label: "Essays Working On", color: "text-blue-600 bg-blue-100" },
+    { value: "draft_completed", label: "Draft Completed", color: "text-indigo-600 bg-indigo-100" },
+    { value: "waiting_review", label: "Waiting for Review", color: "text-yellow-600 bg-yellow-100" },
+    { value: "review_completed", label: "Review Completed", color: "text-purple-600 bg-purple-100" },
+    { value: "application_submitted", label: "Application Submitted", color: "text-green-600 bg-green-100" },
+    { value: "interview_invited", label: "Interview Invited", color: "text-cyan-600 bg-cyan-100" },
+    { value: "interview_completed", label: "Interview Completed", color: "text-teal-600 bg-teal-100" },
+    { value: "decision_pending", label: "Decision Pending", color: "text-orange-600 bg-orange-100" },
+    { value: "accepted", label: "Accepted", color: "text-emerald-600 bg-emerald-100" },
+    { value: "waitlisted", label: "Waitlisted", color: "text-amber-600 bg-amber-100" },
+    { value: "rejected", label: "Rejected", color: "text-red-600 bg-red-100" }
+  ]
+
+  // Document requirements for MBA applications
+  const documentRequirements = [
+    { id: "transcript", name: "Official Transcripts", required: true },
+    { id: "gmat_gre", name: "GMAT/GRE Scores", required: true },
+    { id: "resume", name: "Resume/CV", required: true },
+    { id: "essays", name: "Essays", required: true },
+    { id: "recommendations", name: "Letters of Recommendation", required: true },
+    { id: "toefl_ielts", name: "TOEFL/IELTS (International)", required: false },
+    { id: "application_fee", name: "Application Fee", required: true },
+    { id: "interview", name: "Interview (if invited)", required: false },
+    { id: "additional_docs", name: "Additional Documents", required: false }
+  ]
+
+  // Extended dummy data for targeted schools (15 schools)
+  const targetedSchoolsData = [
+    {
+      id: "1",
+      schoolName: "Harvard Business School",
+      location: "Boston, MA",
+      selectedRound: "Round 1",
+      deadline: "2024-09-10",
+      applicationStatus: "essays_working",
+      preferenceRank: 1,
+      lastRemark: "Working on leadership essay, need to review draft",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: false, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "2", 
+      schoolName: "Stanford Graduate School of Business",
+      location: "Stanford, CA",
+      selectedRound: "Round 1",
+      deadline: "2024-09-12",
+      applicationStatus: "account_created",
+      preferenceRank: 2,
+      lastRemark: "Just created account, need to start application",
+      documentStatus: {
+        transcript: { uploaded: false, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: false, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "3",
+      schoolName: "Wharton School",
+      location: "Philadelphia, PA",
+      selectedRound: "Round 2",
+      deadline: "2024-01-05",
+      applicationStatus: "application_submitted",
+      preferenceRank: 3,
+      lastRemark: "Application submitted successfully, waiting for interview invite",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: true, required: true },
+        recommendations: { uploaded: true, required: true },
+        application_fee: { uploaded: true, required: true }
+      }
+    },
+    {
+      id: "4",
+      schoolName: "London Business School",
+      location: "London, UK",
+      selectedRound: "Round 1",
+      deadline: "2024-10-01",
+      applicationStatus: "draft_completed",
+      preferenceRank: 4,
+      lastRemark: "All essays drafted, sending for review this week",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "5",
+      schoolName: "MIT Sloan",
+      location: "Cambridge, MA",
+      selectedRound: "Round 1",
+      deadline: "2024-09-19",
+      applicationStatus: "interview_invited",
+      preferenceRank: 5,
+      lastRemark: "Interview scheduled for next week, preparing for behavioral questions",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: true, required: true },
+        recommendations: { uploaded: true, required: true },
+        application_fee: { uploaded: true, required: true },
+        interview: { uploaded: false, required: false }
+      }
+    },
+    {
+      id: "6",
+      schoolName: "Columbia Business School",
+      location: "New York, NY",
+      selectedRound: "Round 1",
+      deadline: "2024-09-14",
+      applicationStatus: "waiting_review",
+      preferenceRank: 6,
+      lastRemark: "Essays with mentor for final review",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: true, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "7",
+      schoolName: "Chicago Booth",
+      location: "Chicago, IL",
+      selectedRound: "Round 1",
+      deadline: "2024-09-18",
+      applicationStatus: "review_completed",
+      preferenceRank: 7,
+      lastRemark: "Review complete, final submission this weekend",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: true, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "8",
+      schoolName: "Kellogg School",
+      location: "Evanston, IL",
+      selectedRound: "Round 1",
+      deadline: "2024-09-13",
+      applicationStatus: "essays_working",
+      preferenceRank: 8,
+      lastRemark: "Working on video essay component",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "9",
+      schoolName: "Haas School of Business",
+      location: "Berkeley, CA",
+      selectedRound: "Round 1",
+      deadline: "2024-09-19",
+      applicationStatus: "account_created",
+      preferenceRank: 9,
+      lastRemark: "Need to request transcripts from university",
+      documentStatus: {
+        transcript: { uploaded: false, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: false, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "10",
+      schoolName: "Tuck School of Business",
+      location: "Hanover, NH",
+      selectedRound: "Round 1",
+      deadline: "2024-10-15",
+      applicationStatus: "draft_completed",
+      preferenceRank: 10,
+      lastRemark: "Essays completed, need to finalize recommendations",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "11",
+      schoolName: "Yale School of Management",
+      location: "New Haven, CT",
+      selectedRound: "Round 1",
+      deadline: "2024-09-26",
+      applicationStatus: "essays_working",
+      preferenceRank: 11,
+      lastRemark: "Started leadership essay, need 2 more weeks",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "12",
+      schoolName: "Fuqua School of Business",
+      location: "Durham, NC",
+      selectedRound: "Round 1",
+      deadline: "2024-09-20",
+      applicationStatus: "waiting_review",
+      preferenceRank: 12,
+      lastRemark: "Waiting for recommender to submit letter",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: true, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "13",
+      schoolName: "Ross School of Business",
+      location: "Ann Arbor, MI",
+      selectedRound: "Round 1",
+      deadline: "2024-09-30",
+      applicationStatus: "review_completed",
+      preferenceRank: 13,
+      lastRemark: "Ready to submit, just need to pay application fee",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: true, required: true },
+        recommendations: { uploaded: true, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "14",
+      schoolName: "Anderson School of Management",
+      location: "Los Angeles, CA",
+      selectedRound: "Round 1",
+      deadline: "2024-10-16",
+      applicationStatus: "account_created",
+      preferenceRank: 14,
+      lastRemark: "Just started, need to prioritize this application",
+      documentStatus: {
+        transcript: { uploaded: false, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: false, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: false, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    },
+    {
+      id: "15",
+      schoolName: "Johnson Graduate School",
+      location: "Ithaca, NY",
+      selectedRound: "Round 1",
+      deadline: "2024-10-01",
+      applicationStatus: "draft_completed",
+      preferenceRank: 15,
+      lastRemark: "Essays complete, scheduling mock interview",
+      documentStatus: {
+        transcript: { uploaded: true, required: true },
+        gmat_gre: { uploaded: true, required: true },
+        resume: { uploaded: true, required: true },
+        essays: { uploaded: false, required: true },
+        recommendations: { uploaded: true, required: true },
+        application_fee: { uploaded: false, required: true }
+      }
+    }
+  ]
+
+  // Get application status badge
+  const getStatusBadge = (status: string) => {
+    const statusInfo = applicationStatuses.find(s => s.value === status)
+    if (!statusInfo) return <Badge variant="outline">Unknown</Badge>
+    
+    return (
+      <Badge 
+        variant="outline" 
+        className={`${statusInfo.color} border-current text-xs`}
+      >
+        {statusInfo.label}
+      </Badge>
+    )
+  }
+
+  // Get deadline urgency styling
+  const getDeadlineUrgency = (daysLeft: number) => {
+    if (daysLeft < 0) return { color: "text-red-600", bg: "bg-red-50" }
+    if (daysLeft <= 7) return { color: "text-red-600", bg: "bg-red-50" }
+    if (daysLeft <= 30) return { color: "text-orange-600", bg: "bg-orange-50" }
+    if (daysLeft <= 60) return { color: "text-blue-600", bg: "bg-blue-50" }
+    return { color: "text-gray-600", bg: "bg-gray-50" }
+  }
+
+  // Document Requirements Modal Component
+  const DocumentRequirementsModal = ({ school }: { school: any }) => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="View Documents">
+          <FileText className="h-3 w-3" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Document Requirements
+          </DialogTitle>
+          <DialogDescription>
+            Track your document submission progress for {school.schoolName}
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-96">
+          <div className="space-y-3">
+            {documentRequirements.map((doc) => {
+              const docStatus = school.documentStatus[doc.id as keyof typeof school.documentStatus]
+              return (
+                <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <Checkbox 
+                      checked={docStatus?.uploaded || false}
+                      className="w-4 h-4"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{doc.name}</p>
+                      {doc.required && (
+                        <Badge variant="outline" className="text-xs">Required</Badge>
+                      )}
+                    </div>
+                  </div>
+                  {docStatus?.uploaded && (
+                    <div className="flex items-center gap-1 text-green-600">
+                      <Upload className="h-3 w-3" />
+                      <span className="text-xs">Uploaded</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  )
+
+  // Remarks Modal Component
+  const RemarksModal = ({ school }: { school: any }) => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Add Remark">
+          <MessageSquare className="h-3 w-3" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Remarks
+          </DialogTitle>
+          <DialogDescription>
+            Add notes and track progress for {school.schoolName}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Last Remark:</label>
+            <p className="text-sm text-muted-foreground mt-1 p-2 bg-muted rounded">
+              {school.lastRemark || "No remarks yet"}
+            </p>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Add New Remark:</label>
+            <Textarea 
+              placeholder="Add your notes here..."
+              className="mt-1"
+              rows={4}
+            />
+          </div>
+          <Button className="w-full">Save Remark</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+
+  // Preference Badge Component
+  const PreferenceBadge = ({ rank }: { rank: number }) => {
+    const getPreferenceColor = (rank: number) => {
+      if (rank <= 3) return "bg-amber-100 text-amber-800 border-amber-200"
+      if (rank <= 7) return "bg-blue-100 text-blue-800 border-blue-200"
+      if (rank <= 12) return "bg-green-100 text-green-800 border-green-200"
+      return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+
+    const getPreferenceLabel = (rank: number) => {
+      if (rank <= 3) return "Dream"
+      if (rank <= 7) return "Target"
+      if (rank <= 12) return "Safety"
+      return "Backup"
+    }
+
+    return (
+      <div className="flex items-center gap-2">
+        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getPreferenceColor(rank)}`}>
+          #{rank}
+        </div>
+        <Badge variant="outline" className={`text-xs ${getPreferenceColor(rank)} border-0`}>
+          {getPreferenceLabel(rank)}
+        </Badge>
+      </div>
+    )
+  }
+
+  // Targeted Schools Component
+  const TargetedSchoolsComponent = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Your Target Schools</h2>
+          <p className="text-muted-foreground">Track deadlines and application progress across {targetedSchoolsData.length} schools</p>
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-blue-100 p-2">
+              <Target className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Total Schools</p>
+              <p className="text-xl font-bold">{targetedSchoolsData.length}</p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-orange-100 p-2">
+              <Clock className="h-4 w-4 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Urgent Deadlines</p>
+              <p className="text-xl font-bold">
+                {targetedSchoolsData.filter(school => calculateDaysLeft(school.deadline) <= 7).length}
+              </p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-green-100 p-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Submitted</p>
+              <p className="text-xl font-bold">
+                {targetedSchoolsData.filter(school => school.applicationStatus === 'application_submitted').length}
+              </p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-purple-100 p-2">
+              <Trophy className="h-4 w-4 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Interviews</p>
+              <p className="text-xl font-bold">
+                {targetedSchoolsData.filter(school => 
+                  school.applicationStatus === 'interview_invited' || 
+                  school.applicationStatus === 'interview_completed'
+                ).length}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Schools Grid */}
+      <ScrollArea className="h-[700px]">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {targetedSchoolsData
+            .sort((a, b) => a.preferenceRank - b.preferenceRank)
+            .map((school) => {
+              const daysLeft = calculateDaysLeft(school.deadline)
+              const urgency = getDeadlineUrgency(daysLeft)
+              const uploadedDocs = Object.values(school.documentStatus).filter(doc => doc.uploaded).length
+              const totalRequiredDocs = Object.values(school.documentStatus).filter(doc => doc.required).length
+              const statusInfo = applicationStatuses.find(s => s.value === school.applicationStatus)
+              
+              return (
+                <Card key={school.id} className="group hover:shadow-lg transition-all duration-200 hover:scale-[1.02] relative">
+                  {/* Preference Rank Badge */}
+                  <div className="absolute -top-2 -left-2 z-10">
+                    <PreferenceBadge rank={school.preferenceRank} />
+                  </div>
+
+                  <CardHeader className="pb-3">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold leading-tight">{school.schoolName}</CardTitle>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <MapPin className="h-3 w-3" />
+                            {school.location}
+                          </div>
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {school.selectedRound}
+                          </Badge>
+                        </div>
+                        <div className="text-right">
+                          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${urgency.bg} ${urgency.color}`}>
+                            {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {new Date(school.deadline).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    {/* Application Status */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Application Status</label>
+                      <Select value={school.applicationStatus}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {applicationStatuses.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                                {status.label}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Document Progress */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Documents</label>
+                        <span className="text-xs text-muted-foreground">{uploadedDocs}/{totalRequiredDocs}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${(uploadedDocs / totalRequiredDocs) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Last Remark */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last Note</label>
+                      <p className="text-sm text-muted-foreground p-2 bg-muted/30 rounded-md min-h-[40px] text-left">
+                        {school.lastRemark || "No notes yet"}
+                      </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="View Essays">
+                          <Edit3 className="h-3 w-3" />
+                        </Button>
+                        <DocumentRequirementsModal school={school} />
+                        <RemarksModal school={school} />
+                      </div>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/mba-schools/${school.id}`}>
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+
   return (
     <DashboardLayout>
       <PerformanceMonitor />
       <div className="container mx-auto p-4 md:p-6">
-        {/* Welcome Section */}
+        {/* Welcome Section - Always render immediately */}
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {getTimeBasedGreeting()}, {getUserDisplayName()}!
+            {getTimeBasedGreeting()}, {authLoading ? "Student" : getUserDisplayName()}!
           </h1>
           <p className="text-muted-foreground mt-1">Track your MBA application journey</p>
         </div>
 
-        {/* Main Dashboard Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          
-          {/* 1. Your Deadlines */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="h-5 w-5 text-red-500" />
-                Your Deadlines
-              </CardTitle>
-              <CardDescription>Upcoming application deadlines</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoadingData ? (
-                <div className="space-y-3">
-                  {[1,2,3].map((i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Skeleton className="h-6 w-6 rounded-full" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-3 w-2/3" />
-                        <Skeleton className="h-5 w-16" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : upcomingDeadlines.length > 0 ? (
-                <div className="space-y-3">
-                  {upcomingDeadlines.map((deadline) => (
-                    <div key={deadline.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                      <div className={`rounded-full p-1 ${
-                        (deadline.daysLeft ?? 0) <= 7 ? 'bg-red-100 text-red-600' :
-                        (deadline.daysLeft ?? 0) <= 30 ? 'bg-amber-100 text-amber-600' :
-                        'bg-blue-100 text-blue-600'
-                      }`}>
-                        <Calendar className="h-3 w-3" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{deadline.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {deadline.university || deadline.school_name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant={(deadline.daysLeft ?? 0) <= 7 ? 'destructive' : 'secondary'} className="text-xs">
-                            {deadline.daysLeft ?? 0} days left
-                          </Badge>
-                          {deadline.school_name && (
-                            <Badge variant="outline" className="text-xs">
-                              School
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <Button variant="ghost" size="sm" className="w-full mt-2" asChild>
-                    <Link href="/calendar">
-                      View All Deadlines
-                      <ChevronRight className="ml-1 h-3 w-3" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Calendar className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">No deadlines set</p>
-                  <p className="text-xs text-muted-foreground mb-3">Add schools to track deadlines or create custom ones</p>
-                  <div className="space-y-2">
-                    <Button size="sm" asChild>
-                      <Link href="/mba-schools">Browse Schools</Link>
-                    </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/calendar">Add Custom Deadline</Link>
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 2. Target Schools */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Target className="h-5 w-5 text-blue-500" />
-                Target Schools
-              </CardTitle>
-              <CardDescription>Your saved MBA programs</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {schoolsLoading ? (
-                <div className="space-y-3">
-                  {[1,2,3].map((i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-3 w-2/3" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : savedSchools.length > 0 ? (
-                <div className="space-y-3">
-                  {savedSchools.slice(0, 3).map((schoolId) => (
-                    <div key={schoolId} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <div className="rounded-full bg-blue-100 p-2">
-                        <School className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">MBA School</p>
-                        <p className="text-xs text-muted-foreground">Saved to your list</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  ))}
-                  <Separator />
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{savedSchools.length} schools saved</span>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href="/mba-schools">
-                        View All
-                        <ChevronRight className="ml-1 h-3 w-3" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Target className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">No schools saved</p>
-                  <p className="text-xs text-muted-foreground mb-3">Start building your target list</p>
-                  <Button size="sm" asChild>
-                    <Link href="/mba-schools">
-                      <Plus className="h-3 w-3 mr-1" />
-                      Browse Schools
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 3. Your Recent Activity */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Activity className="h-5 w-5 text-green-500" />
-                Recent Activity
-              </CardTitle>
-              <CardDescription>Your latest actions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoadingData ? (
-                <div className="space-y-3">
-                  {[1,2,3].map((i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <Skeleton className="h-6 w-6 rounded-full" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-3 w-2/3" />
-                        <Skeleton className="h-3 w-1/3" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : recentActivity.length > 0 ? (
-                <div className="space-y-3">
-                  {recentActivity.slice(0, 3).map((activity) => (
-                    <div key={activity.id} className="flex items-start gap-3">
-                      <div className="rounded-full bg-green-100 p-1.5">
-                        <activity.icon className="h-3 w-3 text-green-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{activity.title}</p>
-                        <p className="text-xs text-muted-foreground">{activity.description}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{activity.timestamp}</p>
-                      </div>
-                    </div>
-                  ))}
-                  <Button variant="ghost" size="sm" className="w-full mt-2" asChild>
-                    <Link href="/profile">
-                      View All Activity
-                      <ChevronRight className="ml-1 h-3 w-3" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">No recent activity</p>
-                  <p className="text-xs text-muted-foreground mb-3">Start your MBA journey to see activity here</p>
-                  <div className="space-y-2">
-                    <Button size="sm" asChild>
-                      <Link href="/mba-schools">
-                        <Search className="h-3 w-3 mr-1" />
-                        Browse Schools
-                      </Link>
-                    </Button>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href="/scholarships">Find Scholarships</Link>
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href="/profile">Complete Profile</Link>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 4. Applications Submitted */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                Applications Submitted
-              </CardTitle>
-              <CardDescription>Your submitted applications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoadingData ? (
-                <div className="space-y-3">
-                  {[1,2].map((i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                      <Skeleton className="h-4 w-4" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-3 w-2/3" />
-                      </div>
-                      <Skeleton className="h-6 w-16" />
-                    </div>
-                  ))}
-                </div>
-              ) : submittedApplications.length > 0 ? (
-                <div className="space-y-3">
-                  {submittedApplications.slice(0, 3).map((app) => (
-                    <div key={app.id} className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">
-                          {app.universities?.name || `University ${app.university_id.slice(-4)}`}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Submitted {new Date(app.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="bg-green-100 text-green-700">
-                        Submitted
-                      </Badge>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-sm text-muted-foreground">
-                      {submittedApplications.length} application{submittedApplications.length !== 1 ? 's' : ''} submitted
-                    </span>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href="/applications">
-                        View All
-                        <ChevronRight className="ml-1 h-3 w-3" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">No applications submitted</p>
-                  <p className="text-xs text-muted-foreground mb-3">Start your first application</p>
-                  <div className="space-y-2">
-                    <Button size="sm" asChild>
-                      <Link href="/mba-schools">Find Schools</Link>
-                    </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/applications">Manage Applications</Link>
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 5. Complete Your Profile */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <User className="h-5 w-5 text-purple-500" />
-                Complete Your Profile
-              </CardTitle>
-              <CardDescription>Enhance your application profile</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Profile Completion</span>
-                    <span className="text-sm text-muted-foreground">{profileCompletion}%</span>
-                  </div>
-                  <Progress value={profileCompletion} className="h-2" />
-                </div>
-                
-                {profileCompletion < 100 ? (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">Complete your profile to:</p>
-                      <ul className="text-xs space-y-1">
-                        <li className="flex items-center gap-2">
-                          <div className="h-1 w-1 rounded-full bg-muted-foreground" />
-                          Get better school recommendations
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className="h-1 w-1 rounded-full bg-muted-foreground" />
-                          Track application deadlines
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className="h-1 w-1 rounded-full bg-muted-foreground" />
-                          Find relevant scholarships
-                        </li>
-                      </ul>
-                    </div>
-                    <Button size="sm" className="w-full" asChild>
-                      <Link href="/profile">
-                        <Settings className="h-3 w-3 mr-1" />
-                        Complete Profile
-                      </Link>
-                    </Button>
-                  </>
-                ) : (
-                  <div className="text-center py-2">
-                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                    <p className="text-sm font-medium text-green-600">Profile Complete!</p>
-                    <p className="text-xs text-muted-foreground">You're ready to apply</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 6. Your Scores */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-amber-500" />
-                Your Scores
-              </CardTitle>
-              <CardDescription>Test scores & achievements</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {testScores.length > 0 ? (
-                <div className="space-y-3">
-                  {testScores.map((score, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
-                      <div>
-                        <p className="font-medium text-sm">{score.test}</p>
-                        {score.date && (
-                          <p className="text-xs text-muted-foreground">{score.date}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-lg text-amber-600">{score.score}</p>
-                        {score.percentile && (
-                          <p className="text-xs text-muted-foreground">{score.percentile}%ile</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <Button variant="ghost" size="sm" className="w-full" asChild>
-                    <Link href="/profile">
-                      Update Scores
-                      <ChevronRight className="ml-1 h-3 w-3" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Trophy className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">No test scores added</p>
-                  <p className="text-xs text-muted-foreground mb-3">Add your GMAT/GRE scores to get better recommendations</p>
-                  <Button size="sm" asChild>
-                    <Link href="/profile">
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Scores
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 7. Scholarships Saved */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500" />
-                Scholarships Saved
-              </CardTitle>
-              <CardDescription>Your saved scholarship opportunities</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {scholarshipsLoading ? (
-                <div className="space-y-3">
-                  {[1,2].map((i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-                      <Skeleton className="h-4 w-4" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-3 w-2/3" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : savedScholarships.length > 0 ? (
-                <div className="space-y-3">
-                  {savedScholarships.slice(0, 3).map((scholarshipId) => (
-                    <div key={scholarshipId} className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">Scholarship Opportunity</p>
-                        <p className="text-xs text-muted-foreground">Merit-based award</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  ))}
-                  <Separator />
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{savedScholarships.length} scholarships saved</span>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href="/scholarships">
-                        View All
-                        <ChevronRight className="ml-1 h-3 w-3" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Star className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">No scholarships saved</p>
-                  <p className="text-xs text-muted-foreground mb-3">Discover funding opportunities for your MBA</p>
-                  <Button size="sm" asChild>
-                    <Link href="/scholarships">
-                      <Search className="h-3 w-3 mr-1" />
-                      Find Scholarships
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        {/* Targeted Schools Section */}
+        <TargetedSchoolsComponent />
       </div>
     </DashboardLayout>
   )

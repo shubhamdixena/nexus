@@ -7,19 +7,24 @@ interface PreloadConfig {
   enableComponentPreload: boolean
   enableDataPreload: boolean
   criticalDataTtl: number
+  prioritizeCriticalPath: boolean
+  useSkeleton: boolean
 }
 
 const DEFAULT_CONFIG: PreloadConfig = {
   enableImagePreload: true,
   enableComponentPreload: true,
   enableDataPreload: true,
-  criticalDataTtl: 2 * 60 * 1000 // 2 minutes for critical data
+  criticalDataTtl: 2 * 60 * 1000, // 2 minutes for critical data
+  prioritizeCriticalPath: true,  // Prioritize critical path rendering
+  useSkeleton: true              // Use skeleton loading for non-critical content
 }
 
 class DashboardPreloader {
   private static config = DEFAULT_CONFIG
   private static preloadedComponents = new Set<string>()
   private static preloadedImages = new Set<string>()
+  private static criticalPathLoaded = false
 
   static configure(config: Partial<PreloadConfig>) {
     this.config = { ...this.config, ...config }
@@ -31,23 +36,79 @@ class DashboardPreloader {
 
     performanceMonitor.startTiming('CriticalDataPreload')
 
-    const preloadTasks = []
+    // Split into critical vs non-critical data
+    if (this.config.prioritizeCriticalPath) {
+      // Load only critical path data first (user profile)
+      if (userId) {
+        try {
+          await CacheManager.getOrFetch(
+            `profile:${userId}`,
+            async () => {
+              const response = await fetch('/api/profile')
+              if (!response.ok) throw new Error('Failed to fetch profile')
+              return await response.json()
+            },
+            this.config.criticalDataTtl
+          )
+          this.criticalPathLoaded = true
+        } catch (error) {
+          console.warn('Critical profile data preload failed:', error)
+        }
+      }
+      
+      // Load non-critical data asynchronously after a delay
+      setTimeout(() => {
+        this.preloadNonCriticalData()
+      }, 100)
+    } else {
+      // Original behavior - load everything at once
+      const preloadTasks = []
 
-    // Preload user profile if authenticated
-    if (userId) {
+      // Preload user profile if authenticated
+      if (userId) {
+        preloadTasks.push(
+          CacheManager.getOrFetch(
+            `profile:${userId}`,
+            async () => {
+              const response = await fetch('/api/profile')
+              if (!response.ok) throw new Error('Failed to fetch profile')
+              return await response.json()
+            },
+            this.config.criticalDataTtl
+          )
+        )
+      }
+
+      // Preload dashboard stats
       preloadTasks.push(
         CacheManager.getOrFetch(
-          `profile:${userId}`,
+          'stats',
           async () => {
-            const response = await fetch('/api/profile')
-            if (!response.ok) throw new Error('Failed to fetch profile')
-            return await response.json()
+            const response = await fetch('/api/stats')
+            if (!response.ok) throw new Error('Failed to fetch stats')
+            const { data } = await response.json()
+            return data
           },
           this.config.criticalDataTtl
         )
       )
-    }
 
+      try {
+        await Promise.allSettled(preloadTasks)
+        this.criticalPathLoaded = true
+        performanceMonitor.endTiming('CriticalDataPreload')
+      } catch (error) {
+        console.warn('Critical data preload failed:', error)
+      }
+    }
+  }
+
+  // Load non-critical data after critical path is rendered
+  private static async preloadNonCriticalData() {
+    performanceMonitor.startTiming('NonCriticalDataPreload')
+    
+    const preloadTasks = []
+    
     // Preload dashboard stats
     preloadTasks.push(
       CacheManager.getOrFetch(
@@ -61,12 +122,26 @@ class DashboardPreloader {
         this.config.criticalDataTtl
       )
     )
-
+    
+    // Preload deadlines
+    preloadTasks.push(
+      CacheManager.getOrFetch(
+        'deadlines',
+        async () => {
+          const response = await fetch('/api/deadlines')
+          if (!response.ok) throw new Error('Failed to fetch deadlines')
+          const { data } = await response.json()
+          return data
+        },
+        this.config.criticalDataTtl
+      )
+    )
+    
     try {
       await Promise.allSettled(preloadTasks)
-      performanceMonitor.endTiming('CriticalDataPreload')
+      performanceMonitor.endTiming('NonCriticalDataPreload')
     } catch (error) {
-      console.warn('Critical data preload failed:', error)
+      console.warn('Non-critical data preload failed:', error)
     }
   }
 
@@ -74,13 +149,18 @@ class DashboardPreloader {
   static async preloadDashboardImages() {
     if (!this.config.enableImagePreload) return
 
+    // Split images into critical vs non-critical
     const criticalImages = [
-      '/diverse-students-learning.png',
+      '/diverse-students-learning.png'
+    ]
+    
+    const nonCriticalImages = [
       '/scholarship-opportunities.png',
       '/campus-quad.png'
     ]
 
-    const imagePromises = criticalImages
+    // Load critical images immediately
+    const criticalImagePromises = criticalImages
       .filter(src => !this.preloadedImages.has(src))
       .map(src => {
         this.preloadedImages.add(src)
@@ -88,28 +168,58 @@ class DashboardPreloader {
       })
 
     try {
-      await Promise.allSettled(imagePromises)
+      await Promise.allSettled(criticalImagePromises)
     } catch (error) {
-      console.warn('Image preload failed:', error)
+      console.warn('Critical image preload failed:', error)
     }
+    
+    // Defer non-critical images
+    setTimeout(() => {
+      const nonCriticalImagePromises = nonCriticalImages
+        .filter(src => !this.preloadedImages.has(src))
+        .map(src => {
+          this.preloadedImages.add(src)
+          return this.preloadImage(src)
+        })
+      
+      Promise.allSettled(nonCriticalImagePromises).catch(error => {
+        console.warn('Non-critical image preload failed:', error)
+      })
+    }, 200)
   }
 
   // Preload heavy components in the background
   static preloadDashboardComponents() {
     if (!this.config.enableComponentPreload) return
 
-    const componentsToPreload = [
-      'admin-panel',
-      'settings-panel',
+    // Critical components to load immediately
+    const criticalComponents = [
       'profile'
     ]
+    
+    // Non-critical components to load after delay
+    const nonCriticalComponents = [
+      'admin-panel',
+      'settings-panel'
+    ]
 
-    componentsToPreload.forEach(component => {
+    // Load critical components immediately
+    criticalComponents.forEach(component => {
       if (!this.preloadedComponents.has(component)) {
         this.preloadedComponents.add(component)
         this.preloadComponent(component)
       }
     })
+    
+    // Defer non-critical components
+    setTimeout(() => {
+      nonCriticalComponents.forEach(component => {
+        if (!this.preloadedComponents.has(component)) {
+          this.preloadedComponents.add(component)
+          this.preloadComponent(component)
+        }
+      })
+    }, 300)
   }
 
   // Preload a single component
@@ -122,8 +232,8 @@ class DashboardPreloader {
         case 'settings-panel':
           await import('../components/settings-panel')
           break
-              case 'profile':
-        await import('../components/comprehensive-profile-setup')
+        case 'profile':
+          await import('../components/comprehensive-profile-setup')
           break
       }
     } catch (error) {
@@ -182,12 +292,15 @@ class DashboardPreloader {
 
     const likelyPages = nextPageMap[currentPath] || []
     
-    likelyPages.forEach(page => {
-      // Prefetch the page (browser will cache it)
-      const link = document.createElement('link')
-      link.rel = 'prefetch'
-      link.href = page
-      document.head.appendChild(link)
+    // Stagger the prefetching to not block main thread
+    likelyPages.forEach((page, index) => {
+      setTimeout(() => {
+        // Prefetch the page (browser will cache it)
+        const link = document.createElement('link')
+        link.rel = 'prefetch'
+        link.href = page
+        document.head.appendChild(link)
+      }, index * 100) // Stagger by 100ms per page
     })
   }
 
@@ -250,19 +363,20 @@ class DashboardPreloader {
     }
   }
 
-  // Get preload status for debugging
   static getPreloadStatus() {
     return {
+      criticalPathLoaded: this.criticalPathLoaded,
       preloadedComponents: Array.from(this.preloadedComponents),
       preloadedImages: Array.from(this.preloadedImages),
-      cacheStats: CacheManager.getStats()
+      config: this.config
     }
   }
 
-  // Clear preload cache
   static clearPreloadCache() {
     this.preloadedComponents.clear()
     this.preloadedImages.clear()
+    this.criticalPathLoaded = false
+    CacheManager.clear()
   }
 }
 

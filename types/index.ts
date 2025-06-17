@@ -55,94 +55,11 @@ export interface University {
   updated_at: string
 }
 
-export interface MBASchool {
-  id: string
-  name: string
-  location: string
-  country: string
-  ranking?: number | null
-  type?: string | null
-  duration?: string | null
-  tuition?: string | null
-  tuition_per_year?: string | null
-  total_cost?: string | null
-  description?: string | null
-  website?: string | null
-  
-  // Application & Admission Info
-  application_deadline?: string | null
-  application_deadlines?: string | null  // Multiple application rounds
-  application_fee?: string | null
-  gmat_gre_waiver_available?: boolean | null
-  admissions_rounds?: string | null
-  
-  // Class & Student Info  
-  class_size?: number | null
-  women_percentage?: number | null
-  class_profile?: string | null
-  international_students?: string | null
-  
-  // Test Scores & Academic Requirements
-  avg_gmat?: number | null
-  mean_gmat?: number | null
-  gmat_range?: string | null
-  avg_gpa?: number | null
-  mean_gpa?: number | null
-  avg_gre?: number | null
-  avg_work_exp?: number | null
-  avg_work_exp_years?: number | null
-  work_experience_requirement?: string | null
-  application_requirements?: string | null
-  
-  // Rankings
-  qs_rank?: number | null
-  qs_mba_rank?: number | null
-  ft_rank?: number | null
-  ft_global_mba_rank?: number | null
-  bloomberg_rank?: number | null
-  bloomberg_mba_rank?: number | null
-  
-  // Employment & Career Info
-  acceptance_rate?: number | null
-  employment_rate?: number | null
-  employment_in_3_months?: number | null
-  employment_in_3_months_percent?: number | null
-  avg_starting_salary?: string | null
-  weighted_salary?: string | null
-  salary_increase?: number | null
-  top_industries?: string | null
-  top_hiring_companies?: string | null
-  career_services?: string | null
-  
-  // Alumni & Network
-  alumni_network?: string | null
-  alumni_network_strength?: string | null
-  alumni_support?: string | null
-  notable_alumni?: string | null
-  
-  // Program Details
-  start_date?: string | null
-  format?: string | null
-  specializations?: string[] | string | null
-  teaching_methodology?: string | null
-  global_focus?: string | null
-  faculty_size?: string | null
-  research_centers?: string | null
-  campus_life?: string | null
-  
-  // Status & Classification
-  status?: string | null
-  classification?: string | null
-  tier?: string | null
-  category?: string | null // Keep for backward compatibility
-  
-  // Timestamps
-  created_at: string
-  updated_at: string
-  
-  // Note: university_id is now optional and for reference only (no foreign key)
-  university_id?: string | null
-}
+// Import from master definition
+import type { MBASchool as MasterMBASchool } from './mba-school-master'
+
+// Use the master definition
+export interface MBASchool extends MasterMBASchool {}
 
 export interface Scholarship {
   id: string

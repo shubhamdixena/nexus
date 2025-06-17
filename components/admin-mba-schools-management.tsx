@@ -34,36 +34,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 
-// Define a proper type for MBA School
-interface MBASchool {
-  id: string
-  name: string
-  type: string
-  location: string
-  country: string
-  ranking: number
-  duration: string
-  tuition: string
-  total_cost?: string
-  description: string
-  website?: string
-  application_deadline?: string
-  class_size?: number
-  avg_gmat?: number
-  gmat_range?: string
-  avg_gpa?: number
-  acceptance_rate?: number
-  employment_rate?: number
-  avg_starting_salary?: string
-  top_industries?: string
-  start_date?: string
-  format?: string
-  year1_courses?: string
-  year2_courses?: string
-  teaching_methodology?: string
-  status: 'active' | 'inactive'
-  created_at?: string
-  updated_at?: string
+// Import the master MBA School type definition
+import type { MBASchool } from "@/types/mba-school-master"
+
+// Helper functions to handle null/undefined values
+const safeString = (value: string | null | undefined): string => {
+  return value || '';
+}
+
+const safeNumber = (value: number | null | undefined): number => {
+  return value || 0;
 }
 
 // Define validation schema
@@ -213,8 +193,8 @@ const AdminMbaSchoolsManagement = React.memo(() => {
       const matchesStatus = !filters.status || school.status === filters.status
       const matchesType = !filters.type || school.type === filters.type
       const matchesCountry = !filters.country || school.country?.toLowerCase().includes(filters.country.toLowerCase())
-      const matchesRankingMin = !filters.rankingMin || school.ranking >= parseInt(filters.rankingMin)
-      const matchesRankingMax = !filters.rankingMax || school.ranking <= parseInt(filters.rankingMax)
+      const matchesRankingMin = !filters.rankingMin || (school.ranking !== null && school.ranking !== undefined && school.ranking >= parseInt(filters.rankingMin))
+      const matchesRankingMax = !filters.rankingMax || (school.ranking !== null && school.ranking !== undefined && school.ranking <= parseInt(filters.rankingMax))
 
       return matchesSearch && matchesStatus && matchesType && matchesCountry && matchesRankingMin && matchesRankingMax
     })
@@ -959,7 +939,7 @@ const AdminMbaSchoolsManagement = React.memo(() => {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleStatusToggle(school.id, school.status)
+                              handleStatusToggle(school.id, school.status || 'inactive')
                             }}
                           >
                             <Badge variant={school.status === "active" ? "default" : "secondary"}>

@@ -5,7 +5,8 @@ import { useToast } from "@/hooks/use-toast"
 
 interface CompareItem {
   id: string
-  name: string
+  name?: string
+  business_school?: string
   type: string
   location: string
   country: string
@@ -63,7 +64,7 @@ export function useCompare(): UseCompareReturn {
         setTimeout(() => {
           toast({
             title: "Already in comparison",
-            description: `${item.name} is already in your comparison list.`,
+            description: `${item.business_school || item.name || 'School'} is already in your comparison list.`,
             variant: "default",
           })
         }, 0)
@@ -89,7 +90,7 @@ export function useCompare(): UseCompareReturn {
       setTimeout(() => {
         toast({
           title: "Added to comparison",
-          description: `${item.name} has been added to your comparison list.`,
+          description: `${item.business_school || item.name || 'School'} has been added to your comparison list.`,
           variant: "default",
         })
       }, 0)
@@ -108,7 +109,7 @@ export function useCompare(): UseCompareReturn {
         setTimeout(() => {
           toast({
             title: "Removed from comparison",
-            description: `${item.name} has been removed from your comparison list.`,
+            description: `${item.business_school || item.name || 'School'} has been removed from your comparison list.`,
             variant: "default",
           })
         }, 0)

@@ -63,6 +63,11 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
           schoolsToCompare.includes(school.id)
         )
         
+        console.log('All schools from API:', response.data.length)
+        console.log('Schools to compare:', schoolsToCompare)
+        console.log('Filtered schools found:', filteredSchools.length)
+        console.log('First filtered school:', filteredSchools[0])
+        
         if (filteredSchools.length === 0) {
           throw new Error('No schools found for comparison')
         }
@@ -80,7 +85,7 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
   }, [schoolsToCompare])
 
   const getValueColor = (value: any, values: any[], type: string, higherIsBetter: boolean = true) => {
-    if (type === 'text') return 'text-gray-900'
+    if (type === 'text') return 'text-gray-900 dark:text-gray-100'
     
     const numericValues = values
       .map(v => {
@@ -93,29 +98,29 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
       })
       .filter(v => v !== null) as number[]
 
-    if (numericValues.length < 2) return 'text-gray-900'
+    if (numericValues.length < 2) return 'text-gray-900 dark:text-gray-100'
 
     const currentValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''))
-    if (isNaN(currentValue)) return 'text-gray-900'
+    if (isNaN(currentValue)) return 'text-gray-900 dark:text-gray-100'
 
     const max = Math.max(...numericValues)
     const min = Math.min(...numericValues)
     
-    if (max === min) return 'text-gray-900'
+    if (max === min) return 'text-gray-900 dark:text-gray-100'
     
     if (higherIsBetter) {
-      if (currentValue === max) return 'text-green-600 font-semibold'
-      if (currentValue === min) return 'text-red-500'
+      if (currentValue === max) return 'text-green-600 dark:text-green-400 font-semibold'
+      if (currentValue === min) return 'text-red-500 dark:text-red-400'
     } else {
-      if (currentValue === min) return 'text-green-600 font-semibold'
-      if (currentValue === max) return 'text-red-500'
+      if (currentValue === min) return 'text-green-600 dark:text-green-400 font-semibold'
+      if (currentValue === max) return 'text-red-500 dark:text-red-400'
     }
     
-    return 'text-gray-900'
+    return 'text-gray-900 dark:text-gray-100'
   }
 
   const getBgColor = (value: any, values: any[], type: string, higherIsBetter: boolean = true) => {
-    if (type === 'text') return 'bg-gray-50'
+    if (type === 'text') return 'bg-gray-50 dark:bg-gray-800'
     
     const numericValues = values
       .map(v => {
@@ -128,25 +133,25 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
       })
       .filter(v => v !== null) as number[]
 
-    if (numericValues.length < 2) return 'bg-gray-50'
+    if (numericValues.length < 2) return 'bg-gray-50 dark:bg-gray-800'
 
     const currentValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''))
-    if (isNaN(currentValue)) return 'bg-gray-50'
+    if (isNaN(currentValue)) return 'bg-gray-50 dark:bg-gray-800'
 
     const max = Math.max(...numericValues)
     const min = Math.min(...numericValues)
     
-    if (max === min) return 'bg-gray-50'
+    if (max === min) return 'bg-gray-50 dark:bg-gray-800'
     
     if (higherIsBetter) {
-      if (currentValue === max) return 'bg-green-50 border-green-200'
-      if (currentValue === min) return 'bg-red-50 border-red-200'
+      if (currentValue === max) return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+      if (currentValue === min) return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
     } else {
-      if (currentValue === min) return 'bg-green-50 border-green-200'
-      if (currentValue === max) return 'bg-red-50 border-red-200'
+      if (currentValue === min) return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+      if (currentValue === max) return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
     }
     
-    return 'bg-gray-50'
+    return 'bg-gray-50 dark:bg-gray-800'
   }
 
   const formatValue = (value: any, type: string) => {
@@ -174,44 +179,25 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
         title: "School Rankings & Recognition",
         items: [
           {
-            label: "Global Ranking",
+            label: "FT Global MBA Ranking",
             icon: Trophy,
-            values: schools.map(s => s.ranking || 'Not ranked'),
+            values: schools.map(s => (s as any).ft_global_mba_rank || 'Not ranked'),
             type: 'number' as const,
             higherIsBetter: false
           },
           {
             label: "QS MBA Ranking",
             icon: Award,
-            values: schools.map(s => s.qs_rank || 'Not ranked'),
-            type: 'number' as const,
-            higherIsBetter: false
-          },
-          {
-            label: "FT Global MBA Ranking",
-            icon: Award,
-            values: schools.map(s => s.ft_rank || 'Not ranked'),
+            values: schools.map(s => (s as any).qs_mba_rank || 'Not ranked'),
             type: 'number' as const,
             higherIsBetter: false
           },
           {
             label: "Bloomberg MBA Ranking",
             icon: Award, 
-            values: schools.map(s => s.bloomberg_rank || 'Not ranked'),
+            values: schools.map(s => (s as any).bloomberg_mba_rank || 'Not ranked'),
             type: 'number' as const,
             higherIsBetter: false
-          },
-          {
-            label: "Classification",
-            icon: Award,
-            values: schools.map(s => s.classification || s.tier || 'Not specified'),
-            type: 'text' as const
-          },
-          {
-            label: "Accreditation",
-            icon: CheckCircle,
-            values: schools.map(s => (s as any).accreditation || 'AACSB accredited'),
-            type: 'text' as const
           }
         ]
       },
@@ -219,106 +205,81 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
         title: "Program Structure",
         items: [
           {
-            label: "Duration",
-            icon: Clock,
-            values: schools.map(s => s.duration || '2 years'),
-            type: 'text' as const
-          },
-          {
             label: "Class Size",
             icon: Users,
-            values: schools.map(s => s.class_size || 'Not specified'),
+            values: schools.map(s => (s as any).class_size || 'Not specified'),
             type: 'number' as const,
             higherIsBetter: false
           },
           {
-            label: "Women Percentage",
+            label: "Women (%)",
             icon: Users,
-            values: schools.map(s => s.women_percentage || 'Not specified'),
+            values: schools.map(s => (s as any).women ? `${(s as any).women}%` : 'Not specified'),
             type: 'percentage' as const,
             higherIsBetter: true
           },
           {
-            label: "International Students",
+            label: "International Students (%)",
             icon: Globe,
-            values: schools.map(s => s.international_students || 'Not specified'),
+            values: schools.map(s => (s as any).international_students ? `${(s as any).international_students}%` : 'Not specified'),
+            type: 'percentage' as const,
+            higherIsBetter: true
+          },
+          {
+            label: "Program Duration",
+            icon: Clock,
+            values: schools.map(s => (s as any).program_duration || 'Full-time 2 years'),
             type: 'text' as const
           },
           {
-            label: "Start Date",
-            icon: Calendar,
-            values: schools.map(s => s.start_date || 'August/September'),
-            type: 'text' as const
-          },
-          {
-            label: "Format",
-            icon: BookOpen,
-            values: schools.map(s => s.format || 'Full-time, on-campus'),
+            label: "STEM Designation",
+            icon: GraduationCap,
+            values: schools.map(s => (s as any).stem_designation || 'NA'),
             type: 'text' as const
           }
         ]
       },
       {
-        title: "Admission Requirements",
+        title: "Admissions",
         items: [
           {
             label: "Average GMAT",
-            icon: Target,
-            values: schools.map(s => s.avg_gmat || 'Not specified'),
-            type: 'score' as const,
-            higherIsBetter: true
-          },
-          {
-            label: "GMAT Range",
-            icon: Target,
-            values: schools.map(s => s.gmat_range || 'Not specified'),
-            type: 'text' as const
-          },
-          {
-            label: "Average GRE",
-            icon: Target,
-            values: schools.map(s => s.avg_gre || 'Not specified'),
-            type: 'score' as const,
-            higherIsBetter: true
-          },
-          {
-            label: "Mean GPA",
-            icon: GraduationCap,
-            values: schools.map(s => s.mean_gpa || s.avg_gpa || 'Not specified'),
-            type: 'score' as const,
-            higherIsBetter: true
-          },
-          {
-            label: "Acceptance Rate",
-            icon: CheckCircle,
-            values: schools.map(s => s.acceptance_rate || 'Not specified'),
-            type: 'percentage' as const,
-            higherIsBetter: false
-          },
-          {
-            label: "Average Work Experience (Years)",
-            icon: Briefcase,
-            values: schools.map(s => s.avg_work_exp || 'Not specified'),
+            icon: Award,
+            values: schools.map(s => (s as any).avg_gmat || 'Not specified'),
             type: 'number' as const,
             higherIsBetter: true
           },
           {
-            label: "GMAT/GRE Waiver Available",
-            icon: CheckCircle,
-            values: schools.map(s => s.gmat_gre_waiver ? 'Yes' : 'No'),
-            type: 'text' as const
+            label: "Average GPA",
+            icon: GraduationCap,
+            values: schools.map(s => (s as any).avg_gpa || 'Not specified'),
+            type: 'number' as const,
+            higherIsBetter: true
           },
           {
-            label: "Application Fee",
-            icon: DollarSign,
-            values: schools.map(s => s.application_fee || 'Not specified'),
-            type: 'currency' as const,
+            label: "Average GRE",
+            icon: Award,
+            values: schools.map(s => (s as any).avg_gre || 'Not specified'),
+            type: 'number' as const,
+            higherIsBetter: true
+          },
+          {
+            label: "Work Experience (Years)",
+            icon: Briefcase,
+            values: schools.map(s => (s as any).avg_work_exp_years || 'Not specified'),
+            type: 'number' as const,
             higherIsBetter: false
           },
           {
-            label: "Application Deadlines",
+            label: "Round 1 Deadline",
             icon: Calendar,
-            values: schools.map(s => s.application_deadlines || s.application_deadline || 'Multiple rounds'),
+            values: schools.map(s => (s as any).r1_deadline || 'Not specified'),
+            type: 'text' as const
+          },
+          {
+            label: "Round 2 Deadline",
+            icon: Calendar,
+            values: schools.map(s => (s as any).r2_deadline || 'Not specified'),
             type: 'text' as const
           }
         ]
@@ -327,46 +288,44 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
         title: "Costs & Financial Aid",
         items: [
           {
-            label: "Annual Tuition",
+            label: "Total Tuition",
             icon: DollarSign,
-            values: schools.map(s => s.tuition_per_year || s.tuition || 'Not specified'),
-            type: 'currency' as const,
-            higherIsBetter: false
-          },
-          {
-            label: "Total Program Cost",
-            icon: DollarSign,
-            values: schools.map(s => s.total_cost || s.tuition || 'Not specified'),
-            type: 'currency' as const,
-            higherIsBetter: false
-          }
-        ]
-      },
-      {
-        title: "Academic Programs",
-        items: [
-          {
-            label: "Specializations",
-            icon: BookOpen,
             values: schools.map(s => {
-              if (Array.isArray(s.specializations)) {
-                return s.specializations.join(', ')
-              }
-              return s.specializations || 'General Management, Finance, Marketing, Strategy'
+              if (!(s as any).tuition_total) return 'Not specified'
+              return `$${Number((s as any).tuition_total).toLocaleString()}`
             }),
-            type: 'text' as const
+            type: 'currency' as const,
+            higherIsBetter: false
           },
           {
-            label: "Teaching Methodology",
-            icon: Users,
-            values: schools.map(s => s.teaching_methodology || 'Case studies, lectures, group projects'),
-            type: 'text' as const
+            label: "Application Fee",
+            icon: DollarSign,
+            values: schools.map(s => {
+              if (!(s as any).application_fee) return 'Not specified'
+              return `$${Number((s as any).application_fee)}`
+            }),
+            type: 'currency' as const,
+            higherIsBetter: false
           },
           {
-            label: "Global Focus",
-            icon: Globe,
-            values: schools.map(s => s.global_focus || 'International exchange programs'),
-            type: 'text' as const
+            label: "Average Starting Salary",
+            icon: DollarSign,
+            values: schools.map(s => {
+              if (!(s as any).avg_starting_salary) return 'Not specified'
+              return `$${Number((s as any).avg_starting_salary).toLocaleString()}`
+            }),
+            type: 'currency' as const,
+            higherIsBetter: true
+          },
+          {
+            label: "Weighted Salary (USD)",
+            icon: TrendingUp,
+            values: schools.map(s => {
+              if (!(s as any).weighted_salary_usd) return 'Not specified'
+              return `$${Number((s as any).weighted_salary_usd).toLocaleString()}`
+            }),
+            type: 'currency' as const,
+            higherIsBetter: true
           }
         ]
       },
@@ -374,43 +333,18 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
         title: "Career Outcomes",
         items: [
           {
-            label: "Employment in 3 Months",
+            label: "Employment in 3 Months (%)",
             icon: TrendingUp,
-            values: schools.map(s => s.employment_in_3_months || s.employment_rate || 'Not specified'),
-            type: 'percentage' as const,
-            higherIsBetter: true
-          },
-          {
-            label: "Average Starting Salary",
-            icon: DollarSign,
-            values: schools.map(s => s.avg_starting_salary || 'Not specified'),
-            type: 'currency' as const,
-            higherIsBetter: true
-          },
-          {
-            label: "Weighted Salary",
-            icon: DollarSign,
-            values: schools.map(s => s.weighted_salary || 'Not specified'),
-            type: 'currency' as const,
-            higherIsBetter: true
-          },
-          {
-            label: "Salary Increase",
-            icon: TrendingUp,
-            values: schools.map(s => s.salary_increase || 'Not specified'),
+            values: schools.map(s => {
+              return (s as any).employment_in_3_months_percent ? `${(s as any).employment_in_3_months_percent}%` : 'Not specified'
+            }),
             type: 'percentage' as const,
             higherIsBetter: true
           },
           {
             label: "Top Hiring Companies",
             icon: Building,
-            values: schools.map(s => s.top_hiring_companies || s.top_industries || 'Not specified'),
-            type: 'text' as const
-          },
-          {
-            label: "Career Services",
-            icon: Heart,
-            values: schools.map(s => s.career_services || 'Comprehensive career support'),
+            values: schools.map(s => (s as any).top_hiring_companies || 'Not specified'),
             type: 'text' as const
           }
         ]
@@ -421,42 +355,40 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
           {
             label: "Alumni Network Strength",
             icon: Users,
-            values: schools.map(s => s.alumni_network_strength || s.alumni_network || 'Not specified'),
-            type: 'text' as const
-          },
-          {
-            label: "Alumni Support",
-            icon: Heart,
-            values: schools.map(s => s.alumni_support || 'Career mentorship and networking events'),
+            values: schools.map(s => (s as any).alumni_network_strength || 'Not specified'),
             type: 'text' as const
           },
           {
             label: "Notable Alumni",
             icon: Trophy,
-            values: schools.map(s => s.notable_alumni || 'Business leaders and entrepreneurs'),
+            values: schools.map(s => 
+              [(s as any).alumnus_1, (s as any).alumnus_2, (s as any).alumnus_3, (s as any).alumnus_4]
+                .filter(Boolean)
+                .join(', ') || 'Business leaders and entrepreneurs'
+            ),
             type: 'text' as const
           }
         ]
       },
       {
-        title: "Student Life & Community",
+        title: "Additional Information",
         items: [
           {
-            label: "Campus Life",
+            label: "Key Features",
             icon: Heart,
-            values: schools.map(s => s.campus_life || 'Vibrant campus community'),
+            values: schools.map(s => (s as any).key_features || 'Not specified'),
             type: 'text' as const
           },
           {
-            label: "Student Clubs",
-            icon: Users,
-            values: schools.map(s => (s as any).student_clubs || '100+ clubs and organizations'),
+            label: "Core Curriculum",
+            icon: BookOpen,
+            values: schools.map(s => (s as any).core_curriculum || 'Comprehensive business curriculum'),
             type: 'text' as const
           },
           {
-            label: "Class Profile",
-            icon: Users,
-            values: schools.map(s => s.class_profile || 'Diverse, international student body'),
+            label: "Credits Required",
+            icon: GraduationCap,
+            values: schools.map(s => (s as any).credits_required || 'Not specified'),
             type: 'text' as const
           }
         ]
@@ -529,15 +461,18 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
 
         {/* School Headers */}
         <div className={`grid gap-6 mb-8 ${schools.length === 2 ? 'grid-cols-2' : schools.length === 3 ? 'grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
-          {schools.map((school) => (
+          {schools.map((school) => {
+            console.log('Rendering school:', school.id, 'business_school:', (school as any).business_school)
+            return (
             <Card key={school.id} className="text-center">
               <CardHeader className="pb-4">
-                <CardTitle className="text-xl">{school.name}</CardTitle>
+                <CardTitle className="text-xl">{(school as any).business_school || (school as any).name || 'Unknown School'}</CardTitle>
                 <div className="flex items-center justify-center gap-2 flex-wrap">
-                  <Badge variant="outline">#{school.ranking}</Badge>
-                  <Badge variant="secondary">{school.classification || school.tier || 'MBA'}</Badge>
+                  {(school as any).ft_global_mba_rank && <Badge variant="outline">FT #{(school as any).ft_global_mba_rank}</Badge>}
+                  {(school as any).qs_mba_rank && <Badge variant="secondary">QS #{(school as any).qs_mba_rank}</Badge>}
+                  <Badge variant="outline">MBA</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{school.location}, {school.country}</p>
+                <p className="text-sm text-muted-foreground">{(school as any).location}</p>
                 <div className="mt-3">
                   <ReportDataButton 
                     dataType="mba_school"
@@ -550,7 +485,8 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
                 </div>
               </CardHeader>
             </Card>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -575,10 +511,7 @@ export function MBASchoolComparison({ schoolIds }: MBASchoolComparisonProps) {
                           key={schoolIndex} 
                           className={`p-4 rounded-lg border transition-all ${getBgColor(value, item.values, item.type, item.higherIsBetter)}`}
                         >
-                          <div className="text-xs font-medium text-gray-600 mb-1">
-                            {schools[schoolIndex]?.name}
-                          </div>
-                          <div className={`text-sm ${getValueColor(value, item.values, item.type, item.higherIsBetter)}`}>
+                          <div className={`text-sm font-medium ${getValueColor(value, item.values, item.type, item.higherIsBetter)}`}>
                             {formatValue(value, item.type)}
                           </div>
                         </div>

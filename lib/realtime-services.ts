@@ -3,11 +3,11 @@ import { createClient } from "@/lib/supabaseClient"
 import type { 
   University, 
   Scholarship, 
-  MBASchool,
   PaginatedResponse, 
   UniversityFilters, 
   ScholarshipFilters 
 } from "@/types"
+import type { MBASchool } from "@/types/mba-school-master"
 
 // Create a client instance for real-time operations
 const supabase = createClient()
@@ -54,7 +54,7 @@ class QueryBuilder {
       const searchTerm = search.trim().toLowerCase()
       switch (table) {
         case 'mba_schools':
-          query = query.or(`name.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
+          query = query.or(`business_school.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
           break
         case 'scholarships':
           query = query.or(`name.ilike.%${searchTerm}%,provider.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%`)
@@ -295,7 +295,7 @@ export class MBASchoolRealtimeService {
 
       if (error) throw new Error(`Database error: ${error.message}`)
 
-      // No transformation needed - database now uses 'name' field directly
+      // No transformation needed - database uses 'business_school' field directly
       const transformedData = data || []
 
       const result = {
@@ -321,7 +321,7 @@ export class MBASchoolRealtimeService {
 
   static async createMBASchool(data: Partial<MBASchool>): Promise<MBASchool> {
     try {
-      // No field mapping needed - database now uses 'name' directly
+      // No field mapping needed - database uses 'business_school' directly
       const dbData = { ...data }
 
       const { data: result, error } = await supabase
@@ -345,7 +345,7 @@ export class MBASchoolRealtimeService {
 
   static async updateMBASchool(id: string, data: Partial<MBASchool>): Promise<MBASchool> {
     try {
-      // No field mapping needed - database now uses 'name' directly
+      // No field mapping needed - database uses 'business_school' directly
       const dbData = { ...data }
 
       const { data: result, error } = await supabase
@@ -403,7 +403,7 @@ export class MBASchoolRealtimeService {
               .limit(100) // Limit to prevent memory issues
             
             if (data) {
-              // No transformation needed - database now uses 'name' field directly
+              // No transformation needed - database uses 'business_school' field directly
               callback(data)
             }
           } catch (error) {
