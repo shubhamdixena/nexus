@@ -16,7 +16,14 @@ export type ClientEnv = z.infer<typeof clientEnvSchema>
 export type ServerEnv = z.infer<typeof serverEnvSchema>
 
 function validateClientEnv(): ClientEnv {
-  const result = clientEnvSchema.safeParse(process.env)
+  // Explicitly create a plain object with the required environment variables
+  const clientEnv = {
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  }
+  
+  const result = clientEnvSchema.safeParse(clientEnv)
   
   if (!result.success) {
     console.error('❌ Invalid client environment variables:')
@@ -30,7 +37,15 @@ function validateClientEnv(): ClientEnv {
 }
 
 function validateServerEnv(): ServerEnv {
-  const result = serverEnvSchema.safeParse(process.env)
+  // Explicitly create a plain object with the required environment variables
+  const serverEnv = {
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  }
+  
+  const result = serverEnvSchema.safeParse(serverEnv)
   
   if (!result.success) {
     console.error('❌ Invalid server environment variables:')
