@@ -36,6 +36,28 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // For API routes (except auth and profile), allow them to handle their own authentication
+  if (pathname.startsWith("/api/") && 
+      !pathname.startsWith("/api/auth") && 
+      !pathname.startsWith("/api/profile")) {
+    return NextResponse.next()
+  }
+
+  // Get environment variables with validation
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Missing Supabase environment variables in middleware')
+    console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'present' : 'missing')
+    console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'present' : 'missing')
+    
+    // Redirect to landing page with error
+    const errorUrl = new URL("/landing", request.url)
+    errorUrl.searchParams.set("error", "configuration_error")
+    return NextResponse.redirect(errorUrl)
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -43,8 +65,8 @@ export async function middleware(request: NextRequest) {
   })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -93,8 +115,13 @@ export async function middleware(request: NextRequest) {
     const { data, error: userError } = await supabase.auth.getUser()
     const user = data?.user
     
+    // Handle auth session missing error more gracefully (this is expected for unauthenticated users)
     if (userError) {
-      console.error("User authentication error in middleware:", userError)
+      // Only log unexpected errors, not missing session errors
+      if (userError.message !== 'Auth session missing!' && !userError.message.includes('session missing')) {
+        console.error("User authentication error in middleware:", userError)
+      }
+      
       // For root path, redirect to landing page instead of login
       if (pathname === '/') {
         return NextResponse.redirect(new URL("/landing", request.url))
@@ -113,7 +140,6 @@ export async function middleware(request: NextRequest) {
 
     // Check if user exists and is authenticated
     if (!user) {
-      console.log("No authenticated user found")
       // For root path, redirect to landing page for better UX
       if (pathname === '/') {
         return NextResponse.redirect(new URL("/landing", request.url))
@@ -133,7 +159,6 @@ export async function middleware(request: NextRequest) {
 
     // Verify user email is confirmed
     if (!user.email_confirmed_at && !user.phone_confirmed_at) {
-      console.log("User email not confirmed, redirecting to login")
       const loginUrl = new URL("/auth/login", request.url)
       loginUrl.searchParams.set("error", "email_not_confirmed")
       loginUrl.searchParams.set("message", "Please check your email and click the confirmation link before logging in.")
@@ -180,7 +205,6 @@ export async function middleware(request: NextRequest) {
         console.error("Error checking profile completion in middleware:", error)
         // If profile doesn't exist, create a basic one and redirect to profile
         if (error.code === 'PGRST116') {
-          console.log("No profile found, redirecting to profile")
           const profileUrl = new URL("/profile", request.url)
           profileUrl.searchParams.set("required", "true")
           return NextResponse.redirect(profileUrl)
@@ -196,8 +220,12 @@ export async function middleware(request: NextRequest) {
       // Allow access if there's an unexpected error
     }
 
-  } catch (authError) {
-    console.error("Authentication error in middleware:", authError)
+  } catch (authError: unknown) {
+    // Only log unexpected authentication errors
+    if (!(authError instanceof Error) || !authError.message?.includes('session missing')) {
+      console.error("Authentication error in middleware:", authError)
+    }
+    
     // For root path, redirect to landing page
     if (pathname === '/') {
       return NextResponse.redirect(new URL("/landing", request.url))
@@ -223,5 +251,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
 }

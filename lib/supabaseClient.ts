@@ -1,30 +1,17 @@
 import { createBrowserClient, createServerClient, type CookieOptions } from '@supabase/ssr'
 import { Database } from '@/types/database'
+import { env } from './env-validation'
 
 // Create a browser client for client components
 export const createClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
-
-  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 }
 
 // Create a server client for server components and API routes
 export const createServerComponentClient = (cookieStore: any) => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
-
   return createServerClient<Database>(
-    supabaseUrl,
-    supabaseAnonKey,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         get(name: string) {
@@ -71,18 +58,11 @@ export const testSupabaseConnection = async () => {
 
 // Service role client for admin operations (server-side only)
 export const createServiceRoleClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  
   if (typeof window !== 'undefined') {
     throw new Error('Service role client should only be used server-side')
   }
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase environment variables for service role')
-  }
   
-  return createBrowserClient<Database>(supabaseUrl, serviceRoleKey)
+  return createBrowserClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 }
 
 // Utility function to create supabase client for API routes
