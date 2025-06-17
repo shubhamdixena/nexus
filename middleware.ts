@@ -115,8 +115,13 @@ export async function middleware(request: NextRequest) {
     const { data, error: userError } = await supabase.auth.getUser()
     const user = data?.user
     
+    // Handle auth session missing error more gracefully (this is expected for unauthenticated users)
     if (userError) {
-      console.error("User authentication error in middleware:", userError)
+      // Only log unexpected errors, not missing session errors
+      if (userError.message !== 'Auth session missing!' && !userError.message.includes('session missing')) {
+        console.error("User authentication error in middleware:", userError)
+      }
+      
       // For root path, redirect to landing page instead of login
       if (pathname === '/') {
         return NextResponse.redirect(new URL("/landing", request.url))
@@ -135,7 +140,6 @@ export async function middleware(request: NextRequest) {
 
     // Check if user exists and is authenticated
     if (!user) {
-      console.log("No authenticated user found")
       // For root path, redirect to landing page for better UX
       if (pathname === '/') {
         return NextResponse.redirect(new URL("/landing", request.url))
@@ -155,7 +159,6 @@ export async function middleware(request: NextRequest) {
 
     // Verify user email is confirmed
     if (!user.email_confirmed_at && !user.phone_confirmed_at) {
-      console.log("User email not confirmed, redirecting to login")
       const loginUrl = new URL("/auth/login", request.url)
       loginUrl.searchParams.set("error", "email_not_confirmed")
       loginUrl.searchParams.set("message", "Please check your email and click the confirmation link before logging in.")
@@ -202,7 +205,6 @@ export async function middleware(request: NextRequest) {
         console.error("Error checking profile completion in middleware:", error)
         // If profile doesn't exist, create a basic one and redirect to profile
         if (error.code === 'PGRST116') {
-          console.log("No profile found, redirecting to profile")
           const profileUrl = new URL("/profile", request.url)
           profileUrl.searchParams.set("required", "true")
           return NextResponse.redirect(profileUrl)
@@ -219,7 +221,11 @@ export async function middleware(request: NextRequest) {
     }
 
   } catch (authError) {
-    console.error("Authentication error in middleware:", authError)
+    // Only log unexpected authentication errors
+    if (!authError.message?.includes('session missing')) {
+      console.error("Authentication error in middleware:", authError)
+    }
+    
     // For root path, redirect to landing page
     if (pathname === '/') {
       return NextResponse.redirect(new URL("/landing", request.url))
