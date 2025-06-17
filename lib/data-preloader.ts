@@ -108,7 +108,7 @@ class DataPreloader {
   }
 
   private static async preloadRecentMBASchools(): Promise<void> {
-    const params = { page: 1, limit: 20, sortBy: 'ranking', sortOrder: 'asc' }
+    const params = { page: 1, limit: 20, sortBy: 'qs_mba_rank', sortOrder: 'asc' }
     const cacheKey = CacheKeys.mbaSchools(params)
     
     await CacheManager.getOrFetch(
@@ -118,7 +118,7 @@ class DataPreloader {
         const { data, error, count } = await supabase
           .from('mba_schools')
           .select('*', { count: 'exact' })
-          .order('ranking', { ascending: true })
+          .order('qs_mba_rank', { ascending: true })
           .range(0, 19)
         
         if (error) throw error
@@ -151,7 +151,7 @@ class DataPreloader {
         async () => {
           const supabase = createClient()
           const { data, error } = await supabase
-            .from('bookmarks')
+            .from('user_bookmarks')
             .select('item_id')
             .eq('user_id', userId)
             .eq('item_type', type)
@@ -216,7 +216,7 @@ class DataPreloader {
     // Preload first 3 pages of MBA schools
     const pages = [1, 2, 3]
     const preloadPromises = pages.map(page => {
-      const params = { page, limit: 6, sortBy: 'ranking', sortOrder: 'asc' }
+      const params = { page, limit: 6, sortBy: 'qs_mba_rank', sortOrder: 'asc' }
       const cacheKey = CacheKeys.mbaSchools(params)
       
       return CacheManager.getOrFetch(
@@ -227,7 +227,7 @@ class DataPreloader {
           const { data, error, count } = await supabase
             .from('mba_schools')
             .select('*', { count: 'exact' })
-            .order('ranking', { ascending: true })
+            .order('qs_mba_rank', { ascending: true })
             .range(offset, offset + 5)
           
           if (error) throw error
@@ -330,4 +330,4 @@ class DataPreloader {
   }
 }
 
-export default DataPreloader 
+export default DataPreloader
