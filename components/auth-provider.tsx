@@ -34,7 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data: { user }, error } = await supabase.auth.getUser()
         if (error) {
-          console.error('Error getting user:', error)
+          // Check if this is the expected "Auth session missing!" error
+          if (error.message === "Auth session missing!") {
+            console.log('No active auth session found')
+          } else {
+            console.error('Error getting user:', error)
+          }
         }
         setUser(user ?? null)
         setLoading(false)
