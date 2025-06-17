@@ -24,8 +24,3 @@ function validateEnv(): Env {
 }
 
 export const env = validateEnv()
-
-// Validate on module load
-if (typeof window === 'undefined') {
-  validateEnv()
-} 
