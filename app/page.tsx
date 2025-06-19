@@ -178,68 +178,85 @@ export default function Home() {
           deadlinesResponse,
           schoolDeadlinesResponse,
           applicationsResponse,
-          activityResponse
+          activityResponse,
+          schoolTargetsResponse
         ] = await Promise.allSettled([
           fetch("/api/profile"),
           fetch("/api/deadlines"),
           fetch("/api/school-deadlines"),
           fetch("/api/applications"),
-          fetch("/api/activity?limit=5")
+          fetch("/api/activity?limit=5"),
+          fetch("/api/school-targets")
         ])
 
         // Process profile data
         if (profileResponse.status === 'fulfilled' && profileResponse.value.ok) {
-          const { profile, completion } = await profileResponse.value.json()
-          setProfileData({ ...profile, completion })
+          const profileData = await profileResponse.value.json()
+          setProfileData({ ...profileData.profile, completion: profileData.completion })
+          setIsLoadingProfile(false)
+        } else {
+          console.error('Failed to load profile data')
           setIsLoadingProfile(false)
         }
 
-        // Process deadlines data
+        // Process deadlines data - API returns { deadlines: [...] }
         if (deadlinesResponse.status === 'fulfilled' && deadlinesResponse.value.ok) {
-          const { data: deadlinesData } = await deadlinesResponse.value.json()
-          if (deadlinesData && Array.isArray(deadlinesData)) {
-            const processedDeadlines = deadlinesData.map((deadline: any) => ({
+          const deadlinesData = await deadlinesResponse.value.json()
+          if (deadlinesData.deadlines && Array.isArray(deadlinesData.deadlines)) {
+            const processedDeadlines = deadlinesData.deadlines.map((deadline: any) => ({
               ...deadline,
-              daysLeft: calculateDaysLeft(deadline.date),
-              university: deadline.title.includes('Deadline') ? deadline.title.replace(' Deadline', '') : deadline.title
+              date: deadline.deadline_date, // Map deadline_date to date for compatibility
+              daysLeft: calculateDaysLeft(deadline.deadline_date),
+              university: deadline.title.includes('Deadline') ? deadline.title.replace(' Deadline', '') : deadline.title,
+              type: deadline.deadline_type || 'application'
             }))
             setDeadlines(processedDeadlines)
           } else {
             setDeadlines([])
           }
+        } else {
+          console.error('Failed to load deadlines')
+          setDeadlines([])
         }
 
-        // Process school deadlines data
+        // Process school deadlines data - API returns { deadlines: [...] }
         if (schoolDeadlinesResponse.status === 'fulfilled' && schoolDeadlinesResponse.value.ok) {
-          const { data: schoolDeadlinesData } = await schoolDeadlinesResponse.value.json()
-          if (schoolDeadlinesData && Array.isArray(schoolDeadlinesData)) {
-            const processedSchoolDeadlines = schoolDeadlinesData.map((deadline: any) => ({
+          const schoolDeadlinesData = await schoolDeadlinesResponse.value.json()
+          if (schoolDeadlinesData.deadlines && Array.isArray(schoolDeadlinesData.deadlines)) {
+            const processedSchoolDeadlines = schoolDeadlinesData.deadlines.map((deadline: any) => ({
               ...deadline,
-              daysLeft: calculateDaysLeft(deadline.date),
+              date: deadline.deadline_date,
+              daysLeft: calculateDaysLeft(deadline.deadline_date),
               university: deadline.school_name,
-              type: deadline.deadline_type === 'scholarship' ? 'scholarship' : 'application'
+              type: 'application'
             }))
             setSchoolDeadlines(processedSchoolDeadlines)
           } else {
             setSchoolDeadlines([])
           }
+        } else {
+          console.error('Failed to load school deadlines')
+          setSchoolDeadlines([])
         }
 
-        // Process applications data
+        // Process applications data - API returns { data: [...] }
         if (applicationsResponse.status === 'fulfilled' && applicationsResponse.value.ok) {
-          const { data: applicationsData } = await applicationsResponse.value.json()
-          if (applicationsData && Array.isArray(applicationsData)) {
-            setApplications(applicationsData)
+          const applicationsData = await applicationsResponse.value.json()
+          if (applicationsData.data && Array.isArray(applicationsData.data)) {
+            setApplications(applicationsData.data)
           } else {
             setApplications([])
           }
+        } else {
+          console.error('Failed to load applications')
+          setApplications([])
         }
 
-        // Process activity data
+        // Process activity data - API returns { data: [...] }
         if (activityResponse.status === 'fulfilled' && activityResponse.value.ok) {
-          const { data: activityData } = await activityResponse.value.json()
-          if (activityData && Array.isArray(activityData)) {
-            const formattedActivity = activityData.map((activity: any) => ({
+          const activityData = await activityResponse.value.json()
+          if (activityData.data && Array.isArray(activityData.data)) {
+            const formattedActivity = activityData.data.map((activity: any) => ({
               id: activity.id,
               type: 'activity' as const,
               title: activity.action,
@@ -253,6 +270,18 @@ export default function Home() {
           } else {
             setRecentActivity([])
           }
+        } else {
+          console.error('Failed to load activity data')
+          setRecentActivity([])
+        }
+
+        // Process school targets data - this will replace the dummy data
+        if (schoolTargetsResponse.status === 'fulfilled' && schoolTargetsResponse.value.ok) {
+          const schoolTargetsData = await schoolTargetsResponse.value.json()
+          // We'll store this in a new state variable
+          console.log('School targets data:', schoolTargetsData)
+        } else {
+          console.error('Failed to load school targets')
         }
 
       } catch (error) {
@@ -1051,7 +1080,7 @@ export default function Home() {
     <DashboardLayout>
       <PerformanceMonitor />
       <div className="container mx-auto p-4 md:p-6">
-        {/* Welcome Section - Always render immediately */}
+        {/* Welcome Section */}
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             {getTimeBasedGreeting()}, {authLoading ? "Student" : getUserDisplayName()}!
@@ -1059,8 +1088,352 @@ export default function Home() {
           <p className="text-muted-foreground mt-1">Track your MBA application journey</p>
         </div>
 
+        {/* Dashboard Overview Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8">
+          {/* Profile Completion */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Profile Completion</CardTitle>
+              <User className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingProfile ? (
+                <Skeleton className="h-8 w-16 mb-2" />
+              ) : (
+                <div className="text-2xl font-bold">{profileCompletion}%</div>
+              )}
+              <Progress value={profileCompletion} className="w-full mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">
+                {profileCompletion < 100 ? `${100 - profileCompletion}% remaining` : 'Complete!'}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Applications */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Applications</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingData ? (
+                <Skeleton className="h-8 w-16 mb-2" />
+              ) : (
+                <div className="text-2xl font-bold">{applications.length}</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {submittedApplications.length} submitted
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Deadlines */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Upcoming Deadlines</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingData ? (
+                <Skeleton className="h-8 w-16 mb-2" />
+              ) : (
+                <div className="text-2xl font-bold">{upcomingDeadlines.length}</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Next in {upcomingDeadlines[0]?.daysLeft || 0} days
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Saved Schools */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Saved Schools</CardTitle>
+              <Heart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {schoolsLoading ? (
+                <Skeleton className="h-8 w-16 mb-2" />
+              ) : (
+                <div className="text-2xl font-bold">{savedSchools.length}</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {savedScholarships.length} scholarships saved
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* AI Interview Practice */}
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/ai-interview'}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-blue-900">AI Interview</CardTitle>
+              <MessageSquare className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-900">Practice</div>
+              <p className="text-xs text-blue-700 mt-1">
+                Master your MBA interviews
+              </p>
+              <Button size="sm" className="w-full mt-2 bg-blue-600 hover:bg-blue-700" asChild>
+                <Link href="/ai-interview">
+                  Start Session
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Dashboard Content */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Left Column - Deadlines and Activity */}
+          <div className="md:col-span-2 space-y-6">
+            {/* Upcoming Deadlines Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Upcoming Deadlines
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingData ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded" />
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-3/4 mb-2" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : upcomingDeadlines.length > 0 ? (
+                  <div className="space-y-4">
+                    {upcomingDeadlines.map((deadline) => {
+                      const urgency = getDeadlineUrgency(deadline.daysLeft || 0)
+                      return (
+                        <div key={deadline.id} className="flex items-center justify-between p-4 rounded-lg border">
+                          <div className="flex items-center gap-4">
+                            <div className={`rounded-full p-2 ${urgency.bg}`}>
+                              <Calendar className={`h-4 w-4 ${urgency.color}`} />
+                            </div>
+                            <div>
+                              <p className="font-medium">{deadline.title}</p>
+                              <p className="text-sm text-muted-foreground">{deadline.university}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-sm font-medium ${urgency.color}`}>
+                              {deadline.daysLeft} days left
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(deadline.date).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link href="/timeline">View All Deadlines</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No upcoming deadlines</p>
+                    <Button variant="outline" className="mt-4" asChild>
+                      <Link href="/timeline">Manage Deadlines</Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingData ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-3/4 mb-1" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity) => {
+                      const IconComponent = activity.icon
+                      return (
+                        <div key={activity.id} className="flex items-center gap-3">
+                          <div className="rounded-full bg-muted p-2">
+                            <IconComponent className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{activity.title}</p>
+                            <p className="text-xs text-muted-foreground">{activity.description}</p>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatRelativeTime(activity.timestamp)}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No recent activity</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Quick Actions and Profile */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button className="w-full justify-start" asChild>
+                  <Link href="/mba-schools">
+                    <School className="h-4 w-4 mr-2" />
+                    Explore MBA Schools
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/applications">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Create Application
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/timeline">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Add Deadline
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/scholarships">
+                    <Award className="h-4 w-4 mr-2" />
+                    Find Scholarships
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Profile Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Profile Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingProfile ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {profileData?.first_name && (
+                      <div>
+                        <p className="text-sm font-medium">Name</p>
+                        <p className="text-sm text-muted-foreground">
+                          {profileData.first_name} {profileData.last_name}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {profileData?.target_degree && (
+                      <div>
+                        <p className="text-sm font-medium">Target Degree</p>
+                        <p className="text-sm text-muted-foreground">{profileData.target_degree}</p>
+                      </div>
+                    )}
+                    
+                    {testScores.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium">Test Scores</p>
+                        <div className="space-y-1">
+                          {testScores.map((score, index) => (
+                            <p key={index} className="text-sm text-muted-foreground">
+                              {score.test}: {score.score}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link href="/profile">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Edit Profile
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Saved Items Quick View */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="h-5 w-5" />
+                  Saved Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {schoolsLoading || scholarshipsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">MBA Schools</span>
+                      <Badge variant="outline">{savedSchools.length}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Scholarships</span>
+                      <Badge variant="outline">{savedScholarships.length}</Badge>
+                    </div>
+                    <Button variant="outline" size="sm" className="w-full" asChild>
+                      <Link href="/mba-schools?tab=saved">View Saved</Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Targeted Schools Section */}
-        <TargetedSchoolsComponent />
+        <div className="mt-8">
+          <TargetedSchoolsComponent />
+        </div>
       </div>
     </DashboardLayout>
   )

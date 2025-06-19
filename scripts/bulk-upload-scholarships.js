@@ -1,4 +1,4 @@
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: '.env.local' });
@@ -118,13 +118,35 @@ async function processExcelFile(filePath) {
     try {
         console.log(`Processing Excel file: ${filePath}`);
         
-        // Read the Excel file
-        const workbook = XLSX.readFile(filePath);
-        const sheetName = workbook.SheetNames[0]; // Use first sheet
-        const worksheet = workbook.Sheets[sheetName];
+        // Read the Excel file using ExcelJS
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
         
-        // Convert to JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        // Get the first worksheet
+        const worksheet = workbook.worksheets[0];
+        
+        // Convert worksheet to JSON format
+        const jsonData = [];
+        const headers = [];
+        
+        // Get headers from first row
+        worksheet.getRow(1).eachCell((cell, colNumber) => {
+            headers[colNumber] = cell.value;
+        });
+        
+        // Process data rows
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header row
+            
+            const rowData = {};
+            row.eachCell((cell, colNumber) => {
+                if (headers[colNumber]) {
+                    rowData[headers[colNumber]] = cell.value;
+                }
+            });
+            
+            jsonData.push(rowData);
+        });
         
         console.log(`Found ${jsonData.length} rows in Excel file`);
         

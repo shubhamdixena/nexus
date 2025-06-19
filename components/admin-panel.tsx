@@ -2,7 +2,7 @@
 import { useState, useMemo, lazy, Suspense, useCallback } from "react"
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, School, BookOpen, Settings, ArrowLeft, FileText, BookOpenCheck, Activity, Flag, BarChart3 } from "lucide-react"
+import { Users, School, BookOpen, Settings, ArrowLeft, FileText, BookOpenCheck, Activity, Flag, BarChart3, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePermissions } from "@/hooks/use-permissions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -151,6 +151,14 @@ const AdminPanel = React.memo(() => {
       icon: Settings,
       description: "Configure system settings",
       component: AdminSystemSettings,
+      permission: 'admin.settings.manage'
+    },
+    {
+      id: "ai-interview-settings",
+      title: "AI Interview Settings",
+      icon: Brain,
+      description: "Configure AI providers and interview parameters",
+      component: React.lazy(() => import("./admin-ai-interview-settings")),
       permission: 'admin.settings.manage'
     }
   ], [])

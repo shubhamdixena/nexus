@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/client'
-import * as XLSX from 'xlsx'
+import { parse } from 'csv-parse/sync'
 
-interface ExcelScholarshipData {
+interface CSVScholarshipData {
   'Scholarship Name'?: string
   'Host Organization'?: string
   'Host Country'?: string
@@ -28,7 +28,7 @@ function cleanHtmlContent(text: string | undefined): string | null {
     .trim();
 }
 
-function mapExcelToScholarship(row: ExcelScholarshipData) {
+function mapCSVToScholarship(row: CSVScholarshipData) {
   return {
     name: cleanHtmlContent(row['Scholarship Name']),
     provider: cleanHtmlContent(row['Host Organization']),
@@ -60,12 +60,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Read Excel file
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const workbook = XLSX.read(buffer, { type: 'buffer' })
-    const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
-    const jsonData = XLSX.utils.sheet_to_json(worksheet) as ExcelScholarshipData[]
+    // Validate file type
+    if (!file.name.endsWith('.csv')) {
+      return NextResponse.json(
+        { error: 'Only CSV files are supported' },
+        { status: 400 }
+      )
+    }
+
+    // Read and parse CSV file
+    const csvContent = await file.text()
+    const jsonData = parse(csvContent, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true
+    }) as CSVScholarshipData[]
 
     console.log(`Processing ${jsonData.length} scholarship records`)
 
@@ -77,7 +86,7 @@ export async function POST(request: NextRequest) {
       const row = jsonData[i]
       
       try {
-        const scholarship = mapExcelToScholarship(row)
+        const scholarship = mapCSVToScholarship(row)
         
         // Basic validation
         if (!scholarship.name) {
@@ -150,4 +159,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}

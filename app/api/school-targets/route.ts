@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         application_round: target.application_round,
         notes: target.notes,
         priority_score: target.priority_score,
+        target_category: target.target_category,
         qs_mba_rank: school?.qs_mba_rank,
         ft_global_mba_rank: school?.ft_global_mba_rank,
         bloomberg_mba_rank: school?.bloomberg_mba_rank,
@@ -96,7 +97,8 @@ export async function POST(request: NextRequest) {
       program_of_interest,
       application_round,
       notes,
-      priority_score
+      priority_score,
+      target_category
     } = body
 
     // Validate required fields
@@ -130,12 +132,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Insert new school target
+    // Insert new school target with all required fields
     const { data: newTarget, error } = await supabase
       .from('user_school_targets')
       .insert({
         user_id: user.id,
         school_id,
+        target_category: target_category || 'target', // Default to 'target' if not provided
         program_of_interest,
         application_round,
         notes,
@@ -194,6 +197,7 @@ export async function POST(request: NextRequest) {
       application_round: newTarget.application_round,
       notes: newTarget.notes,
       priority_score: newTarget.priority_score,
+      target_category: newTarget.target_category,
       qs_mba_rank: school?.qs_mba_rank,
       ft_global_mba_rank: school?.ft_global_mba_rank,
       bloomberg_mba_rank: school?.bloomberg_mba_rank,
@@ -289,6 +293,7 @@ export async function PUT(request: NextRequest) {
       application_round: updatedTarget.application_round,
       notes: updatedTarget.notes,
       priority_score: updatedTarget.priority_score,
+      target_category: updatedTarget.target_category,
       qs_mba_rank: school?.qs_mba_rank,
       ft_global_mba_rank: school?.ft_global_mba_rank,
       bloomberg_mba_rank: school?.bloomberg_mba_rank,

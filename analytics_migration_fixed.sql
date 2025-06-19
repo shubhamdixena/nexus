@@ -1,10 +1,10 @@
 -- Create user activity logs table for tracking user actions
--- Migration: create_user_activity_logs.sql
+-- Migration: create_user_activity_logs.sql (Fixed version)
 
 CREATE TABLE IF NOT EXISTS public.user_activity_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
-    -- User information - Reference profiles table instead of auth.users
+    -- User information - Reference profiles table
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     user_name TEXT NOT NULL,
     
@@ -49,9 +49,9 @@ CREATE POLICY "Users can insert their own activity logs" ON public.user_activity
 CREATE POLICY "Admins can view all activity logs" ON public.user_activity_logs
     FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM auth.users 
-            WHERE auth.users.id = auth.uid() 
-            AND auth.users.raw_user_meta_data->>'role' IN ('admin', 'super_admin')
+            SELECT 1 FROM profiles 
+            WHERE profiles.id = auth.uid() 
+            AND profiles.role IN ('admin', 'super_admin')
         )
     );
 
@@ -184,30 +184,6 @@ GRANT ALL ON public.user_activity_logs TO authenticated;
 GRANT EXECUTE ON FUNCTION cleanup_old_activity_logs TO authenticated;
 GRANT EXECUTE ON FUNCTION get_user_activity_summary(UUID, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_activity_analytics(INTEGER) TO authenticated;
-
--- Insert some sample data for testing (optional)
--- This will be inserted only if there are existing users
-DO $$
-BEGIN
-    -- Only insert sample data if there are actual users in the system
-    IF EXISTS (SELECT 1 FROM profiles LIMIT 1) THEN
-        INSERT INTO public.user_activity_logs (user_id, user_name, action, resource, details)
-        SELECT 
-            id,
-            COALESCE(first_name || ' ' || last_name, email, 'Unknown User'),
-            'System Setup',
-            'Profile',
-            'Initial system setup'
-        FROM profiles 
-        WHERE NOT EXISTS (
-            SELECT 1 FROM public.user_activity_logs WHERE user_id = profiles.id
-        )
-        LIMIT 5;
-    ELSE
-        -- Log that no users exist for sample data
-        RAISE NOTICE 'No users found in profiles table - skipping sample data insertion';
-    END IF;
-END $$;
 
 -- Comment on the table
 COMMENT ON TABLE public.user_activity_logs IS 'Stores user activity logs for analytics and audit purposes';
