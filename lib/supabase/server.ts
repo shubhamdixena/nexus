@@ -2,12 +2,32 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
+// Server-side environment validation
+function validateServerEnv() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
+  }
+  if (!supabaseAnonKey) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
+  }
+  if (!supabaseServiceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
+  }
+
+  return { supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey }
+}
+
 export async function createSupabaseServerClient() {
+  const { supabaseUrl, supabaseAnonKey } = validateServerEnv()
   const cookieStore = await cookies()
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -19,9 +39,11 @@ export async function createSupabaseServerClient() {
 }
 
 export function createSupabaseServerClientForAPI(request: NextRequest) {
+  const { supabaseUrl, supabaseAnonKey } = validateServerEnv()
+  
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -33,9 +55,11 @@ export function createSupabaseServerClientForAPI(request: NextRequest) {
 }
 
 export function createSupabaseAdminClient() {
+  const { supabaseUrl, supabaseServiceRoleKey } = validateServerEnv()
+  
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    supabaseUrl,
+    supabaseServiceRoleKey,
     {
       cookies: {
         get() { return undefined },

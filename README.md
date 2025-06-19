@@ -119,3 +119,5 @@ Need help? Our support team is here to assist you throughout your MBA journey. W
 Join thousands of successful MBA applicants who have used Nexus to organize their journey and achieve their business school dreams.
 
 *Your MBA journey starts here.* 🚀
+
+**Last Updated:** June 17, 2025 - Version 2.1.0

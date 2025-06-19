@@ -82,25 +82,39 @@ export default function SignupPage() {
       }
 
       if (data.user) {
-        // Create profile entry
-        try {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              email: formData.email.trim().toLowerCase(),
-              first_name: formData.firstName,
-              last_name: formData.lastName,
-              profile_completed: false,
-              profile_completion_percentage: 20,
-            })
+        // Wait for session to be established and get the current session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError)
+          setError("Account created but there was an issue with the session. Please try logging in.")
+          setIsLoading(false)
+          return
+        }
 
-          if (profileError) {
-            console.error('Profile creation error:', profileError)
-            // Don't fail signup if profile creation fails
+        // Create profile entry only if we have a valid session
+        if (sessionData.session) {
+          try {
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert({
+                id: data.user.id,
+                email: formData.email.trim().toLowerCase(),
+                first_name: formData.firstName,
+                last_name: formData.lastName,
+                profile_completed: false,
+                profile_completion_percentage: 20,
+              })
+
+            if (profileError) {
+              console.error('Profile creation error:', profileError)
+              // Don't fail signup if profile creation fails
+            }
+          } catch (profileErr) {
+            console.error('Profile creation error:', profileErr)
           }
-        } catch (profileErr) {
-          console.error('Profile creation error:', profileErr)
+        } else {
+          console.log('No session available, skipping profile creation')
         }
 
         setSuccess("Account created successfully! Please check your email for verification.")
