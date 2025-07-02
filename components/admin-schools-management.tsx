@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
+
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -675,11 +675,9 @@ export function AdminSchoolsManagement() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button asChild>
-                    <Link href="/admin/add-university">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add School
-                    </Link>
+                  <Button onClick={() => setIsAddSchoolOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add School
                   </Button>
                   <BulkDataOperations
                     entityType="Schools"
@@ -799,11 +797,9 @@ export function AdminSchoolsManagement() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button asChild>
-                    <Link href="/admin/add-mba-school">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add MBA School
-                    </Link>
+                  <Button onClick={() => setIsAddMbaSchoolOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add MBA School
                   </Button>
                   <BulkDataOperations
                     entityType="MBA Schools"

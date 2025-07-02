@@ -19,7 +19,7 @@ const ROLE_PERMISSIONS = {
     'admin.read', 'admin.write',
     'admin.users.manage', 'admin.users.advanced',
     'admin.schools.manage', 'admin.scholarships.manage',
-    'admin.applications.manage', 'admin.sop.manage',
+    'admin.sop.manage',
     'admin.settings.manage'
   ]
 }

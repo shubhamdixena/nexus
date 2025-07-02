@@ -18,7 +18,7 @@ export type Permission =
   | 'admin.read' | 'admin.write'
   | 'admin.users.manage' | 'admin.users.advanced'
   | 'admin.schools.manage' | 'admin.scholarships.manage'
-  | 'admin.applications.manage' | 'admin.sop.manage'
+  | 'admin.sop.manage'
   | 'admin.data.manage' | 'admin.settings.manage'
   | 'admin.analytics.view'
 
@@ -35,7 +35,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'admin.read', 'admin.write',
     'admin.users.manage', 'admin.users.advanced',
     'admin.schools.manage', 'admin.scholarships.manage',
-    'admin.applications.manage', 'admin.sop.manage',
+    'admin.sop.manage',
     'admin.data.manage', 'admin.settings.manage',
     'admin.analytics.view'
   ],

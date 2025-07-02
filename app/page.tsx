@@ -1089,7 +1089,7 @@ export default function Home() {
         </div>
 
         {/* Dashboard Overview Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
           {/* Profile Completion */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1109,23 +1109,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* Applications */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Applications</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isLoadingData ? (
-                <Skeleton className="h-8 w-16 mb-2" />
-              ) : (
-                <div className="text-2xl font-bold">{applications.length}</div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {submittedApplications.length} submitted
-              </p>
-            </CardContent>
-          </Card>
+
 
           {/* Upcoming Deadlines */}
           <Card>
@@ -1430,10 +1414,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Targeted Schools Section */}
-        <div className="mt-8">
-          <TargetedSchoolsComponent />
-        </div>
+
       </div>
     </DashboardLayout>
   )
