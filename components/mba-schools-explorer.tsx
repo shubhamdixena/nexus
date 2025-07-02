@@ -54,6 +54,9 @@ export function MBASchoolsExplorer() {
   const [totalPages, setTotalPages] = useState(1)
   const [retryCount, setRetryCount] = useState(0)
   const [isRetrying, setIsRetrying] = useState(false)
+  
+  // Force re-render key for bookmark updates
+  const [renderKey, setRenderKey] = useState(0)
 
   // Get authentication status
   const { user } = useAuth()
@@ -67,6 +70,15 @@ export function MBASchoolsExplorer() {
     loading: bookmarkLoading,
     error: bookmarkError
   } = useBookmarks('mba_school')
+
+  // Debug: Log bookmark state changes
+  useEffect(() => {
+    console.log('MBA Schools Explorer - Bookmark state changed:', {
+      savedSchools,
+      bookmarkLoading,
+      bookmarkError
+    })
+  }, [savedSchools, bookmarkLoading, bookmarkError])
 
   const itemsPerPage = 6
   const maxRetries = 3
@@ -187,7 +199,19 @@ export function MBASchoolsExplorer() {
     }
     
     try {
+      console.log('MBA Schools Explorer - Toggling bookmark for:', schoolId)
+      console.log('MBA Schools Explorer - Before toggle, isBookmarked:', isBookmarked(schoolId))
+      
       await originalToggleBookmark(schoolId)
+      
+      // Force re-render to ensure icon updates immediately
+      setRenderKey(prev => prev + 1)
+      
+      // Small delay to allow state to update, then check again
+      setTimeout(() => {
+        console.log('MBA Schools Explorer - After toggle, isBookmarked:', isBookmarked(schoolId))
+      }, 100)
+      
     } catch (error) {
       console.error('Bookmark toggle error:', error)
       toast({
@@ -334,8 +358,8 @@ export function MBASchoolsExplorer() {
                   <SelectContent>
                     <SelectItem value="any">Any</SelectItem>
                     {countries.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
+                      <SelectItem key={country} value={country || ''}>
+                        {country || 'Unknown'}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -472,7 +496,7 @@ export function MBASchoolsExplorer() {
                           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {mbaSchools.map((school) => (
                 <MBASchoolCard
-                  key={school.id}
+                  key={`${school.id}-${renderKey}`}
                   school={school}
                   isSaved={isBookmarked(school.id)}
                   onToggleSave={() => toggleBookmark(school.id)}
@@ -537,7 +561,7 @@ export function MBASchoolsExplorer() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {savedSchoolsData.map((school) => (
                 <MBASchoolCard
-                  key={school.id}
+                  key={`${school.id}-${renderKey}`}
                   school={school}
                   isSaved={true}
                   onToggleSave={() => toggleBookmark(school.id)}
@@ -557,7 +581,7 @@ export function MBASchoolsExplorer() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {m7Schools.map((school) => (
                 <MBASchoolCard
-                  key={school.id}
+                  key={`${school.id}-${renderKey}`}
                   school={school}
                   isSaved={isBookmarked(school.id)}
                   onToggleSave={() => toggleBookmark(school.id)}
@@ -577,7 +601,7 @@ export function MBASchoolsExplorer() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {t15Schools.map((school) => (
                 <MBASchoolCard
-                  key={school.id}
+                  key={`${school.id}-${renderKey}`}
                   school={school}
                   isSaved={isBookmarked(school.id)}
                   onToggleSave={() => toggleBookmark(school.id)}
