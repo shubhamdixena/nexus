@@ -363,41 +363,41 @@ function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
   const fundingType = getFundingType()
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-100">
       {/* Header */}
-      <div className="p-6 pb-4">
+      <div className="p-4 pb-3">
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 mb-2 leading-tight">
+            <h3 className="text-base font-semibold text-gray-900 mb-1 leading-tight">
               {scholarship.title}
-            </h2>
+            </h3>
             <div className="flex items-center text-gray-600">
-              <MapPin className="w-4 h-4 mr-2" />
-              <span>{scholarship.organization} • {scholarship.country}</span>
+              <MapPin className="w-3 h-3 mr-1" />
+              <span className="text-xs">{scholarship.organization} • {scholarship.country}</span>
             </div>
           </div>
-          <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-            <Bookmark className="w-5 h-5 text-gray-500 hover:text-gray-700" />
+          <button className="p-1 rounded-full hover:bg-gray-100">
+            <Bookmark className="w-4 h-4 text-gray-500 hover:text-gray-700" />
           </button>
         </div>
       </div>
 
       {/* Divider */}
-      <div className="mx-6 border-t border-gray-100"></div>
+      <div className="mx-4 border-t border-gray-100"></div>
 
       {/* Tags */}
-      <div className="px-6 py-4">
-        <div className="flex flex-wrap gap-2">
+      <div className="px-4 py-3">
+        <div className="flex flex-wrap gap-1">
           {scholarship.degree && (
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
               {scholarship.degree}
             </span>
           )}
-          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium">
+          <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">
             {fundingType}
           </span>
           {scholarship.field && (
-            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+            <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
               {scholarship.field}
             </span>
           )}
@@ -405,40 +405,40 @@ function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
       </div>
 
       {/* Divider */}
-      <div className="mx-6 border-t border-gray-100"></div>
+      <div className="mx-4 border-t border-gray-100"></div>
 
       {/* Key Info */}
-      <div className="px-6 py-4">
+      <div className="px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <DollarSign className="w-5 h-5 text-emerald-600 mr-2" />
-            <span className="text-gray-700 font-medium">
+            <DollarSign className="w-4 h-4 text-emerald-600 mr-1" />
+            <span className="text-gray-700 text-sm font-medium">
               {scholarship.amount ? `$${scholarship.amount.toLocaleString()}` : 'Amount varies'}
             </span>
           </div>
           <div className="flex items-center">
-            <Calendar className="w-5 h-5 text-red-500 mr-2" />
-            <span className="text-gray-700 font-medium">{scholarship.deadline}</span>
+            <Calendar className="w-4 h-4 text-red-500 mr-1" />
+            <span className="text-gray-700 text-sm font-medium">{scholarship.deadline}</span>
           </div>
         </div>
       </div>
 
       {/* Divider */}
-      <div className="mx-6 border-t border-gray-100"></div>
+      <div className="mx-4 border-t border-gray-100"></div>
 
       {/* Description */}
-      <div className="px-6 py-4">
-        <p className="text-gray-600 text-sm leading-relaxed">
+      <div className="px-4 py-3">
+        <p className="text-gray-600 text-xs leading-relaxed">
           {scholarship.description || `${scholarship.title} offered by ${scholarship.organization}`}
         </p>
       </div>
 
       {/* Action Button */}
-      <div className="p-6 pt-4">
+      <div className="p-4 pt-3">
         <Link href={`/scholarships/${scholarship.id}`}>
-          <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center">
+          <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center">
             <span>View Details</span>
-            <ExternalLink className="w-4 h-4 ml-2" />
+            <ExternalLink className="w-3 h-3 ml-1" />
           </button>
         </Link>
       </div>
