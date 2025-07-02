@@ -32,6 +32,7 @@ import { MBASchoolRealtimeService } from "@/lib/realtime-services"
 import type { MBASchool } from "@/types"
 import { useBookmarks } from "@/hooks/use-bookmarks"
 import { MBASchoolComparisonModal } from "@/components/mba-school-comparison-modal"
+import { useMBASchools } from "@/hooks/use-cached-data"
 import { CompareButton } from "@/components/compare-button"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
@@ -47,13 +48,37 @@ export function MBASchoolsExplorer() {
   const [selectedGMATRange, setSelectedGMATRange] = useState<string | null>(null)
   const [selectedEmploymentRate, setSelectedEmploymentRate] = useState<string | null>(null)
   
-  // State for API data
-  const [mbaSchools, setMbaSchools] = useState<MBASchool[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Constants
+  const itemsPerPage = 6
+  const maxRetries = 3
+
+  // State for pagination and retry logic
   const [totalPages, setTotalPages] = useState(1)
   const [retryCount, setRetryCount] = useState(0)
   const [isRetrying, setIsRetrying] = useState(false)
+
+  // Use cached data hook for MBA schools
+  const params = {
+    page: currentPage,
+    limit: itemsPerPage,
+    search: searchQuery || undefined,
+    country: selectedCountry || undefined,
+    ranking: selectedRanking || undefined,
+    category: selectedMBACategory || undefined,
+    rankingSystem: selectedRankingSystem || undefined,
+    gmatRange: selectedGMATRange || undefined,
+    employmentRate: selectedEmploymentRate || undefined,
+  }
+
+  const { data: schoolsResponse, loading, error, refetch } = useMBASchools(params)
+  const mbaSchools = schoolsResponse?.data || []
+  
+  // Update pagination when response changes
+  useEffect(() => {
+    if (schoolsResponse?.pagination) {
+      setTotalPages(schoolsResponse.pagination.totalPages || 1)
+    }
+  }, [schoolsResponse])
   
   // Force re-render key for bookmark updates
   const [renderKey, setRenderKey] = useState(0)
@@ -80,85 +105,29 @@ export function MBASchoolsExplorer() {
     })
   }, [savedSchools, bookmarkLoading, bookmarkError])
 
-  const itemsPerPage = 6
-  const maxRetries = 3
-
-  // Load MBA schools from API
-  useEffect(() => {
-    loadMBASchools()
-  }, [currentPage, searchQuery, selectedCountry, selectedRanking, selectedMBACategory, selectedRankingSystem, selectedGMATRange, selectedEmploymentRate])
-
-  const loadMBASchools = useCallback(async (showRetryIndicator = false) => {
-    try {
-      if (showRetryIndicator) {
-        setIsRetrying(true)
-      } else {
-        setLoading(true)
-      }
-      setError(null)
-
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchQuery || undefined,
-        country: selectedCountry || undefined,
-        ranking: selectedRanking || undefined,
-        category: selectedMBACategory || undefined,
-        rankingSystem: selectedRankingSystem || undefined,
-        gmatRange: selectedGMATRange || undefined,
-        employmentRate: selectedEmploymentRate || undefined,
-      }
-
-      const response = await MBASchoolRealtimeService.getMBASchools(params)
-      
-      if (!response || !response.data) {
-        throw new Error('Invalid response from server')
-      }
-
-      setMbaSchools(response.data)
-      setTotalPages(response.pagination?.totalPages || 1)
-      setRetryCount(0) // Reset retry count on success
-    } catch (error) {
-      console.error('Error loading MBA schools:', error)
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'An unexpected error occurred while loading MBA schools'
-      
-      setError(errorMessage)
-      setMbaSchools([])
-      setTotalPages(1)
-    } finally {
-      setLoading(false)
-      setIsRetrying(false)
-    }
-  }, [currentPage, searchQuery, selectedCountry, selectedRanking, selectedMBACategory, selectedRankingSystem, selectedGMATRange, selectedEmploymentRate, itemsPerPage])
-
   // Auto-retry mechanism with exponential backoff
   const handleRetry = useCallback(async () => {
     if (retryCount < maxRetries) {
       setRetryCount(prev => prev + 1)
       const delay = Math.pow(2, retryCount) * 1000 // Exponential backoff
       await new Promise(resolve => setTimeout(resolve, delay))
-      await loadMBASchools(true)
+      setIsRetrying(true)
+      await refetch()
+      setIsRetrying(false)
     }
-  }, [retryCount, loadMBASchools, maxRetries])
+  }, [retryCount, maxRetries, refetch])
 
-  // Real-time subscription for updates
+  // Real-time subscription for updates (simplified for cached data)
   useEffect(() => {
     const subscription = MBASchoolRealtimeService.subscribeToMBASchools((updatedSchools) => {
-      // Update the schools list with real-time data
-      setMbaSchools(updatedSchools)
+      // Update will be handled by cache invalidation
+      refetch()
     })
 
     return () => {
       subscription?.unsubscribe()
     }
-  }, [])
-
-  // Load MBA schools on component mount and filter changes
-  useEffect(() => {
-    loadMBASchools()
-  }, [loadMBASchools])
+  }, [refetch])
 
   const resetFilters = () => {
     setSelectedCountry(null)
@@ -240,7 +209,7 @@ export function MBASchoolsExplorer() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => loadMBASchools()}
+                              onClick={() => refetch()}
               disabled={isRetrying}
             >
               {isRetrying ? (
@@ -292,11 +261,12 @@ export function MBASchoolsExplorer() {
     </div>
   )
 
-  // Early returns for loading and error states
+  // Only show full loading screen if we have no data at all
   if (loading && mbaSchools.length === 0) {
     return <LoadingDisplay />
   }
 
+  // Show error only if we have no cached data to display
   if (error && mbaSchools.length === 0) {
     return <ErrorDisplay />
   }
@@ -309,7 +279,7 @@ export function MBASchoolsExplorer() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>Some data may be outdated: {error}</span>
-            <Button variant="outline" size="sm" onClick={() => loadMBASchools()}>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
@@ -318,11 +288,17 @@ export function MBASchoolsExplorer() {
       )}
 
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">MBA Schools Explorer</h1>
-          <p className="text-muted-foreground mt-2">
-            Discover top MBA programs worldwide with detailed profiles and comparison tools
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">MBA Schools Explorer</h1>
+            <p className="text-muted-foreground mt-2">
+              Discover top MBA programs worldwide with detailed profiles and comparison tools
+            </p>
+          </div>
+          {/* Subtle loading indicator when refreshing with cached data */}
+          {loading && mbaSchools.length > 0 && (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
@@ -479,7 +455,7 @@ export function MBASchoolsExplorer() {
 
         {/* Enhanced tab content with better loading states */}
         <TabsContent value="all" className="mt-4">
-          {loading || isRetrying ? (
+          {(loading || isRetrying) && mbaSchools.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin mr-2" />
               <span>{isRetrying ? 'Retrying...' : 'Loading...'}</span>

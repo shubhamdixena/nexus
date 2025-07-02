@@ -47,18 +47,25 @@ class CacheManager {
 
     const now = Date.now()
     
-    // Return data if still valid
-    if (now < entry.expiresAt) {
+    // Always return data if available (even if stale)
+    if (entry.data !== null) {
+      // Schedule background refresh if data is stale but still within grace period
+      if (now > entry.expiresAt && now < entry.expiresAt + this.config.ttl) {
+        // Data is stale but within grace period - trigger background refresh
+        setTimeout(() => {
+          // This will be handled by components that want fresh data
+          console.log(`Cache entry ${key} is stale, background refresh recommended`)
+        }, 0)
+      }
+      
       return entry.data
     }
 
-    // If stale-while-revalidate is enabled, return stale data
-    if (this.config.staleWhileRevalidate && now < entry.expiresAt + this.config.ttl) {
-      return entry.data
+    // Remove truly expired entry (beyond grace period)
+    if (now > entry.expiresAt + this.config.ttl) {
+      this.cache.delete(key)
     }
-
-    // Remove expired entry
-    this.cache.delete(key)
+    
     return null
   }
 

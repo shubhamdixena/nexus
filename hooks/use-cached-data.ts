@@ -24,8 +24,22 @@ export function useCachedData<T = any>({
   dependencies = [],
   enabled = true
 }: UseCachedDataOptions<T>): UseCachedDataReturn<T> {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(enabled)
+  // Check cache immediately during initialization (SSR-safe)
+  const getInitialState = () => {
+    if (typeof window === 'undefined' || !enabled) {
+      return { data: null, loading: false }
+    }
+    
+    const cached = CacheManager.get<T>(cacheKey)
+    return {
+      data: cached,
+      loading: !cached // Only loading if no cached data exists
+    }
+  }
+
+  const initialState = getInitialState()
+  const [data, setData] = useState<T | null>(initialState.data)
+  const [loading, setLoading] = useState(initialState.loading)
   const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async (forceRefresh = false) => {
@@ -33,7 +47,10 @@ export function useCachedData<T = any>({
     if (typeof window === 'undefined' || !enabled) return
 
     try {
-      setLoading(true)
+      // Only show loading if we don't have any data (cached or otherwise)
+      if (!data || forceRefresh) {
+        setLoading(true)
+      }
       setError(null)
 
       let result: T
@@ -56,7 +73,7 @@ export function useCachedData<T = any>({
     } finally {
       setLoading(false)
     }
-  }, [cacheKey, fetchFn, cacheTtl, enabled])
+  }, [cacheKey, fetchFn, cacheTtl, enabled, data])
 
   const refetch = useCallback(async () => {
     await loadData(true)
@@ -72,12 +89,8 @@ export function useCachedData<T = any>({
     if (typeof window === 'undefined') return
     
     if (enabled) {
-      // First check if we have cached data
-      const cached = CacheManager.get<T>(cacheKey)
-      if (cached) {
-        setData(cached)
-        setLoading(false)
-      } else {
+      // If we don't have data yet, try to load it
+      if (!data) {
         loadData()
       }
     }
@@ -147,7 +160,7 @@ export function useBookmarks(userId: string, itemType: string) {
   })
 }
 
-export function useDeadlines(userId: string, start?: string, end?: string) {
+export function useDeadlines(userId?: string, start?: string, end?: string) {
   const params = { start, end }
   const cacheKey = `deadlines:${userId}:${JSON.stringify(params)}`
   

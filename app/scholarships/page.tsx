@@ -146,7 +146,8 @@ function ScholarshipsPage() {
     return filters.fundingTypes.includes(fundingType)
   })
 
-  if (loading) {
+  // Only show full loading screen if we have no data at all
+  if (loading && !scholarships.length) {
     return (
       <DashboardLayout>
         <div className="container mx-auto p-4 md:p-6">
@@ -161,7 +162,8 @@ function ScholarshipsPage() {
     )
   }
 
-  if (error) {
+  // Show error only if we have no cached data to display
+  if (error && !scholarships.length) {
     return (
       <DashboardLayout>
         <div className="container mx-auto p-4 md:p-6">
@@ -294,6 +296,16 @@ function ScholarshipsPage() {
         </div>
 
         <div className="space-y-6">
+          {/* Show subtle error banner if we have cached data but encountered an error */}
+          {error && scholarships.length > 0 && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-center justify-between">
+              <p className="text-sm text-destructive">Some data may be outdated: {error}</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={loading}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
+              </Button>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between">
             <Tabs defaultValue="all" className="w-auto">
               <TabsList>
@@ -311,6 +323,12 @@ function ScholarshipsPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {/* Subtle loading indicator when refreshing */}
+              {loading && scholarships.length > 0 && (
+                <div className="absolute right-2.5 top-2.5">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
             </div>
           </div>
 

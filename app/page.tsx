@@ -20,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useBookmarks } from "@/hooks/use-bookmarks"
+import { useProfile, useDeadlines, useApplicationProgress } from "@/hooks/use-cached-data"
 import Link from "next/link"
 import {
   Calendar,
@@ -119,14 +120,21 @@ export default function Home() {
     trackFormSubmissions: true
   })
   
-  const [profileData, setProfileData] = useState<any>(null)
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
-  const [deadlines, setDeadlines] = useState<DeadlineItem[]>([])
+  // Use cached data hooks (only when user exists)
+  const { data: profileResponse, loading: profileLoading, error: profileError } = useProfile(user?.id)
+  const { data: deadlinesResponse, loading: deadlinesLoading, error: deadlinesError } = useDeadlines(user?.id)
+  const { data: applicationProgress, loading: applicationsLoading, error: applicationsError } = useApplicationProgress(user?.id)
+  
+  // Legacy state for non-cached data (until we create hooks for these)
   const [schoolDeadlines, setSchoolDeadlines] = useState<DeadlineItem[]>([])
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [applications, setApplications] = useState<Application[]>([])
   const [schoolTargets, setSchoolTargets] = useState<any[]>([])
-  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [isLoadingLegacyData, setIsLoadingLegacyData] = useState(true)
+
+  // Extract data from cached responses
+  const profileData = profileResponse?.profile || null
+  const deadlines = deadlinesResponse || []
   
   // Real-time bookmark data
   const {
@@ -169,57 +177,23 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const loadLegacyDashboardData = async () => {
       if (!user) return
       
-      setIsLoadingData(true)
+      setIsLoadingLegacyData(true)
       try {
-        // Load all data in parallel instead of sequentially
+        // Load only non-cached data (school deadlines, activity, applications, school targets)
         const [
-          profileResponse,
-          deadlinesResponse,
           schoolDeadlinesResponse,
           applicationsResponse,
           activityResponse,
           schoolTargetsResponse
         ] = await Promise.allSettled([
-          fetch("/api/profile"),
-          fetch("/api/deadlines"),
           fetch("/api/school-deadlines"),
           fetch("/api/applications"),
           fetch("/api/activity?limit=5"),
           fetch("/api/school-targets")
         ])
-
-        // Process profile data
-        if (profileResponse.status === 'fulfilled' && profileResponse.value.ok) {
-          const profileData = await profileResponse.value.json()
-          setProfileData({ ...profileData.profile, completion: profileData.completion })
-          setIsLoadingProfile(false)
-        } else {
-          console.error('Failed to load profile data')
-          setIsLoadingProfile(false)
-        }
-
-        // Process deadlines data - API returns { deadlines: [...] }
-        if (deadlinesResponse.status === 'fulfilled' && deadlinesResponse.value.ok) {
-          const deadlinesData = await deadlinesResponse.value.json()
-          if (deadlinesData.deadlines && Array.isArray(deadlinesData.deadlines)) {
-            const processedDeadlines = deadlinesData.deadlines.map((deadline: any) => ({
-              ...deadline,
-              date: deadline.deadline_date, // Map deadline_date to date for compatibility
-              daysLeft: calculateDaysLeft(deadline.deadline_date),
-              university: deadline.title.includes('Deadline') ? deadline.title.replace(' Deadline', '') : deadline.title,
-              type: deadline.deadline_type || 'application'
-            }))
-            setDeadlines(processedDeadlines)
-          } else {
-            setDeadlines([])
-          }
-        } else {
-          console.error('Failed to load deadlines')
-          setDeadlines([])
-        }
 
         // Process school deadlines data - API returns { deadlines: [...] }
         if (schoolDeadlinesResponse.status === 'fulfilled' && schoolDeadlinesResponse.value.ok) {
@@ -297,16 +271,15 @@ export default function Home() {
       } catch (error) {
         console.error('Error loading dashboard data:', error)
         // Set empty states on error
-        setDeadlines([])
         setSchoolDeadlines([])
         setApplications([])
         setRecentActivity([])
       } finally {
-        setIsLoadingData(false)
+        setIsLoadingLegacyData(false)
       }
     }
 
-    loadDashboardData()
+    loadLegacyDashboardData()
   }, [user])
 
   function getTimeBasedGreeting() {
@@ -823,14 +796,14 @@ export default function Home() {
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {isLoadingProfile ? (
+              {profileLoading && !profileData ? (
                 <Skeleton className="h-8 w-16 mb-2" />
               ) : (
-                <div className="text-2xl font-bold">{profileCompletion}%</div>
+                <div className="text-2xl font-bold">{profileResponse?.completion?.percentage || 0}%</div>
               )}
-              <Progress value={profileCompletion} className="w-full mt-2" />
+              <Progress value={profileResponse?.completion?.percentage || 0} className="w-full mt-2" />
               <p className="text-xs text-muted-foreground mt-1">
-                {profileCompletion < 100 ? `${100 - profileCompletion}% remaining` : 'Complete!'}
+                {(profileResponse?.completion?.percentage || 0) < 100 ? `${100 - (profileResponse?.completion?.percentage || 0)}% remaining` : 'Complete!'}
               </p>
             </CardContent>
           </Card>
@@ -844,7 +817,7 @@ export default function Home() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {isLoadingData ? (
+              {(deadlinesLoading && deadlines.length === 0) || isLoadingLegacyData ? (
                 <Skeleton className="h-8 w-16 mb-2" />
               ) : (
                 <div className="text-2xl font-bold">{upcomingDeadlines.length}</div>
@@ -906,7 +879,7 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isLoadingData ? (
+                {(deadlinesLoading && deadlines.length === 0) || isLoadingLegacyData ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
                       <div key={i} className="flex items-center gap-4">
@@ -969,7 +942,7 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isLoadingData ? (
+                {isLoadingLegacyData ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
                       <div key={i} className="flex items-center gap-3">
@@ -1052,7 +1025,7 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isLoadingProfile ? (
+                {profileLoading && !profileData ? (
                   <div className="space-y-4">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
