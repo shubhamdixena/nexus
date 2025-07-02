@@ -363,20 +363,20 @@ function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
   const fundingType = getFundingType()
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-100">
+    <div className="w-80 h-96 bg-white rounded-2xl shadow-lg border border-gray-100 flex flex-col">
       {/* Header */}
-      <div className="p-4 pb-3">
+      <div className="p-4 pb-3 flex-shrink-0">
         <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <h3 className="text-base font-semibold text-gray-900 mb-1 leading-tight">
+          <div className="flex-1 min-h-[3rem]">
+            <h3 className="text-base font-semibold text-gray-900 mb-2 leading-tight line-clamp-2">
               {scholarship.title}
             </h3>
             <div className="flex items-center text-gray-600">
-              <MapPin className="w-3 h-3 mr-1" />
-              <span className="text-xs">{scholarship.organization} • {scholarship.country}</span>
+              <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
+              <span className="text-xs truncate">{scholarship.organization} • {scholarship.country}</span>
             </div>
           </div>
-          <button className="p-1 rounded-full hover:bg-gray-100">
+          <button className="p-1 rounded-full hover:bg-gray-100 flex-shrink-0">
             <Bookmark className="w-4 h-4 text-gray-500 hover:text-gray-700" />
           </button>
         </div>
@@ -386,8 +386,8 @@ function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
       <div className="mx-4 border-t border-gray-100"></div>
 
       {/* Tags */}
-      <div className="px-4 py-3">
-        <div className="flex flex-wrap gap-1">
+      <div className="px-4 py-3 flex-shrink-0">
+        <div className="flex flex-wrap gap-1 min-h-[1.5rem]">
           {scholarship.degree && (
             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
               {scholarship.degree}
@@ -408,17 +408,17 @@ function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
       <div className="mx-4 border-t border-gray-100"></div>
 
       {/* Key Info */}
-      <div className="px-4 py-3">
+      <div className="px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <DollarSign className="w-4 h-4 text-emerald-600 mr-1" />
-            <span className="text-gray-700 text-sm font-medium">
+          <div className="flex items-center flex-1 min-w-0">
+            <DollarSign className="w-4 h-4 text-emerald-600 mr-1 flex-shrink-0" />
+            <span className="text-gray-700 text-sm font-medium truncate">
               {scholarship.amount ? `$${scholarship.amount.toLocaleString()}` : 'Amount varies'}
             </span>
           </div>
-          <div className="flex items-center">
-            <Calendar className="w-4 h-4 text-red-500 mr-1" />
-            <span className="text-gray-700 text-sm font-medium">{scholarship.deadline}</span>
+          <div className="flex items-center flex-1 min-w-0 justify-end">
+            <Calendar className="w-4 h-4 text-red-500 mr-1 flex-shrink-0" />
+            <span className="text-gray-700 text-sm font-medium truncate">{scholarship.deadline}</span>
           </div>
         </div>
       </div>
@@ -427,14 +427,14 @@ function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
       <div className="mx-4 border-t border-gray-100"></div>
 
       {/* Description */}
-      <div className="px-4 py-3">
-        <p className="text-gray-600 text-xs leading-relaxed">
+      <div className="px-4 py-3 flex-1 flex flex-col">
+        <p className="text-gray-600 text-xs leading-relaxed line-clamp-3 flex-1">
           {scholarship.description || `${scholarship.title} offered by ${scholarship.organization}`}
         </p>
       </div>
 
       {/* Action Button */}
-      <div className="p-4 pt-3">
+      <div className="p-4 pt-3 flex-shrink-0">
         <Link href={`/scholarships/${scholarship.id}`}>
           <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center">
             <span>View Details</span>
