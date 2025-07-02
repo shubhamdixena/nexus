@@ -429,7 +429,7 @@ function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
 
       {/* Action Button */}
       <CardFooter className="pt-0">
-        <Button asChild className="w-full">
+        <Button asChild variant="outline" className="w-full">
           <Link href={`/scholarships/${scholarship.id}`}>
             <span>View Details</span>
             <ExternalLink className="w-4 h-4 ml-2" />
