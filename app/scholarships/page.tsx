@@ -351,62 +351,78 @@ function ScholarshipsPage() {
 
 function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-4">
+    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 border-l-4 border-l-primary">
+      {/* Top accent line */}
+      <div className="h-1 bg-gradient-to-r from-primary to-primary/60 rounded-t-lg"></div>
+      
+      <CardHeader className="pb-3">
         <div className="flex justify-between items-start mb-3">
           <CardTitle className="text-lg font-semibold leading-tight pr-2 line-clamp-2">
             {scholarship.title}
           </CardTitle>
-          <Button variant="ghost" size="icon" className="flex-shrink-0 h-8 w-8">
+          <Button variant="ghost" size="icon" className="flex-shrink-0 h-8 w-8 hover:bg-primary/10">
             <Bookmark className="w-4 h-4" />
           </Button>
         </div>
         
         <CardDescription className="flex items-center">
-          <MapPin className="w-4 h-4 mr-2" />
-          <span className="text-sm">{scholarship.organization} • {scholarship.country}</span>
+          <MapPin className="w-4 h-4 mr-2 text-primary" />
+          <span className="text-sm font-medium">{scholarship.organization} • {scholarship.country}</span>
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="flex-1 pb-4">
+      {/* Divider */}
+      <div className="mx-6 border-t border-border/60"></div>
+
+      <CardContent className="flex-1 py-4">
         {/* Key Info Grid */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="flex items-center">
-            <DollarSign className="w-4 h-4 text-primary mr-2" />
-            <div>
-              <p className="text-xs text-muted-foreground">Amount</p>
-              <p className="text-sm font-semibold">
-                {scholarship.amount ? `$${scholarship.amount.toLocaleString()}` : 'Varies'}
-              </p>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="bg-muted/30 p-3 rounded-lg border border-border/40">
+            <div className="flex items-center mb-1">
+              <DollarSign className="w-4 h-4 text-primary mr-2" />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Amount</p>
             </div>
+            <p className="text-sm font-semibold text-foreground">
+              {scholarship.amount ? `$${scholarship.amount.toLocaleString()}` : 'Varies'}
+            </p>
           </div>
-          <div className="flex items-center">
-            <Calendar className="w-4 h-4 text-destructive mr-2" />
-            <div>
-              <p className="text-xs text-muted-foreground">Deadline</p>
-              <p className="text-sm font-semibold">{scholarship.deadline}</p>
+          
+          <div className="bg-muted/30 p-3 rounded-lg border border-border/40">
+            <div className="flex items-center mb-1">
+              <Calendar className="w-4 h-4 text-destructive mr-2" />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Deadline</p>
             </div>
+            <p className="text-sm font-semibold text-foreground">{scholarship.deadline}</p>
           </div>
         </div>
 
-        {/* Tags */}
-        <div className="flex gap-2 mb-4">
-          {scholarship.degree && (
-            <Badge variant="secondary" className="text-xs">
-              {scholarship.degree}
-            </Badge>
-          )}
-          {scholarship.field && (
-            <Badge variant="outline" className="text-xs">
-              {scholarship.field}
-            </Badge>
-          )}
+        {/* Divider line */}
+        <div className="border-t border-border/40 my-4"></div>
+
+        {/* Tags Section */}
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Program Details</p>
+          <div className="flex gap-2 flex-wrap">
+            {scholarship.degree && (
+              <Badge variant="secondary" className="text-xs font-medium bg-primary/10 text-primary border-primary/20">
+                {scholarship.degree}
+              </Badge>
+            )}
+            {scholarship.field && (
+              <Badge variant="outline" className="text-xs font-medium border-border/60">
+                {scholarship.field}
+              </Badge>
+            )}
+          </div>
         </div>
       </CardContent>
 
+      {/* Divider */}
+      <div className="mx-6 border-t border-border/60"></div>
+
       {/* Action Button */}
-      <CardFooter className="pt-0">
-        <Button asChild className="w-full">
+      <CardFooter className="pt-4 pb-4">
+        <Button asChild className="w-full bg-primary hover:bg-primary/90 transition-colors">
           <Link href={`/scholarships/${scholarship.id}`}>
             <span>View Details</span>
             <ExternalLink className="w-4 h-4 ml-2" />
