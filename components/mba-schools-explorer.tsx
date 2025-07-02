@@ -33,6 +33,8 @@ import type { MBASchool } from "@/types"
 import { useBookmarks } from "@/hooks/use-bookmarks"
 import { MBASchoolComparisonModal } from "@/components/mba-school-comparison-modal"
 import { CompareButton } from "@/components/compare-button"
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/hooks/use-toast"
 
 export function MBASchoolsExplorer() {
   const [showFilters, setShowFilters] = useState(false)
@@ -53,11 +55,15 @@ export function MBASchoolsExplorer() {
   const [retryCount, setRetryCount] = useState(0)
   const [isRetrying, setIsRetrying] = useState(false)
 
+  // Get authentication status
+  const { user } = useAuth()
+  const { toast } = useToast()
+
   // Use bookmark service instead of local state
   const {
     bookmarkedItems: savedSchools,
     isBookmarked,
-    toggleBookmark,
+    toggleBookmark: originalToggleBookmark,
     loading: bookmarkLoading,
     error: bookmarkError
   } = useBookmarks('mba_school')
@@ -168,6 +174,29 @@ export function MBASchoolsExplorer() {
   const m7Schools = mbaSchools.filter((s) => s.classification === "M7")
   const t15Schools = mbaSchools.filter((s) => s.classification === "T15")
   const savedSchoolsData = mbaSchools.filter((school) => savedSchools.includes(school.id))
+
+  // Enhanced toggle bookmark with auth check and better feedback
+  const toggleBookmark = async (schoolId: string) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to bookmark schools.",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    try {
+      await originalToggleBookmark(schoolId)
+    } catch (error) {
+      console.error('Bookmark toggle error:', error)
+      toast({
+        title: "Bookmark Error", 
+        description: "Failed to update bookmark. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
 
   // Enhanced error display component
   const ErrorDisplay = () => (
@@ -315,7 +344,7 @@ export function MBASchoolsExplorer() {
 
               <div className="space-y-2">
                 <label htmlFor="ranking">Ranking Range</label>
-                <Select value={selectedRanking || "any"} onValueChange={(value) => setSelectedRanking(value === "any" ? null : value)}>
+                <Select value={selectedRanking || "any"} onValueChange={(value: string) => setSelectedRanking(value === "any" ? null : value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select ranking range" />
                   </SelectTrigger>
