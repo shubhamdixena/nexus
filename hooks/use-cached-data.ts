@@ -237,3 +237,33 @@ export function useAdminData<T>(endpoint: string, params: any = {}, ttl = 5 * 60
     dependencies: [endpoint, JSON.stringify(params)]
   })
 }
+
+export function useScholarships(params: {
+  page?: number
+  limit?: number
+  search?: string
+  type?: string
+  country?: string
+  coverage?: string
+} = {}) {
+  const cacheKey = `scholarships:${JSON.stringify(params)}`
+  
+  return useCachedData({
+    cacheKey,
+    fetchFn: async () => {
+      const queryParams = new URLSearchParams()
+      if (params.page) queryParams.append('page', params.page.toString())
+      if (params.limit) queryParams.append('limit', params.limit.toString())
+      if (params.search) queryParams.append('search', params.search)
+      if (params.type) queryParams.append('type', params.type)
+      if (params.country) queryParams.append('country', params.country)
+      if (params.coverage) queryParams.append('coverage', params.coverage)
+      
+      const response = await fetch(`/api/scholarships?${queryParams.toString()}`)
+      if (!response.ok) throw new Error('Failed to fetch scholarships')
+      return await response.json()
+    },
+    cacheTtl: 10 * 60 * 1000, // 10 minutes
+    dependencies: [JSON.stringify(params)]
+  })
+}

@@ -2,149 +2,106 @@
 
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Bookmark, BookmarkCheck, Calendar, ExternalLink, Globe } from "lucide-react"
+import { ArrowLeft, Bookmark, BookmarkCheck, Calendar, ExternalLink, Globe, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
-interface Scholarship {
-  id: number
-  title: string // Scholarship Name
-  description: string
-  eligibility: string[]
-  benefits: string[]
-  deadline: string
-  applyUrl: string
-  officialUrl: string
-  // Keep these fields for compatibility with existing UI
+interface ScholarshipData {
+  id: string
+  title: string
   organization?: string
   country?: string
-  amount?: number
+  amount?: number | null
+  deadline: string
   degree?: string
   field?: string
+  description?: string
+  eligibility_criteria?: string
+  benefits?: string
+  fully_funded?: string
+  official_url?: string
+  apply_url?: string
+  status?: string
+  created_at: string
+  updated_at: string
 }
-
-// This would typically come from an API or database
-const scholarships: Scholarship[] = [
-  {
-    id: 1,
-    title: "Amsterdam Excellence Scholarship",
-    organization: "University of Amsterdam",
-    country: "Netherlands",
-    description:
-      "Prestigious scholarship offered by the University of Amsterdam for exceptionally talented international students pursuing master's programs. The award aims to attract top global talent and foster academic excellence in a variety of disciplines.",
-    amount: 25000,
-    deadline: "March 1, 2026",
-    degree: "Masters",
-    field: "Various",
-    eligibility: [
-      "Non-EU students with academic excellence (top 10% of their class)",
-      "Strong ambition and relevance of the Master's program to future career",
-      "Two-year Master's programs have possibility of extension for a second year",
-    ],
-    benefits: [
-      "€25,000 per year (covering tuition and living expenses)",
-      "Access to a select community of scholars",
-      "Opportunity for special extracurricular activities",
-    ],
-    applyUrl:
-      "https://www.uva.nl/en/education/master-s/scholarships--tuition/scholarships-and-loans/amsterdam-excellence-scholarship/amsterdam-excellence-scholarship.html",
-    officialUrl:
-      "https://www.uva.nl/en/education/master-s/scholarships--tuition/scholarships-and-loans/amsterdam-excellence-scholarship/amsterdam-excellence-scholarship.html",
-  },
-  {
-    id: 2,
-    title: "Global Leaders Scholarship",
-    organization: "International Education Foundation",
-    country: "United States",
-    description:
-      "Full scholarship for outstanding students pursuing graduate studies in STEM fields. This scholarship aims to support future leaders who will make significant contributions to technological innovation and scientific advancement.",
-    amount: 50000,
-    deadline: "March 15, 2024",
-    degree: "Masters",
-    field: "STEM",
-    eligibility: [
-      "Minimum GPA of 3.5 on a 4.0 scale",
-      "Demonstrated leadership experience",
-      "Strong research background",
-      "Two letters of recommendation",
-    ],
-    benefits: [
-      "Full tuition coverage",
-      "Monthly stipend for living expenses",
-      "Research funding allowance",
-      "Conference travel support",
-    ],
-    applyUrl: "https://example.com/global-leaders-scholarship/apply",
-    officialUrl: "https://example.com/global-leaders-scholarship",
-  },
-  {
-    id: 3,
-    title: "Future Innovators Grant",
-    organization: "Tech Innovation Council",
-    country: "Canada",
-    description:
-      "Scholarship for students with innovative ideas in technology and computer science. This grant supports creative thinkers who are developing novel solutions to real-world problems through technology.",
-    amount: 25000,
-    deadline: "April 30, 2024",
-    degree: "Bachelors",
-    field: "Computer Science",
-    eligibility: [
-      "Enrolled in an accredited computer science program",
-      "Demonstrated interest in innovation and entrepreneurship",
-      "Portfolio of projects or prototypes",
-      "One letter of recommendation",
-    ],
-    benefits: [
-      "Partial tuition coverage",
-      "Mentorship from industry professionals",
-      "Access to innovation labs and resources",
-      "Internship opportunities with partner companies",
-    ],
-    applyUrl: "https://example.com/future-innovators-grant/apply",
-    officialUrl: "https://example.com/future-innovators-grant",
-  },
-  {
-    id: 4,
-    title: "Women in Business Fellowship",
-    organization: "Global Business Association",
-    country: "United Kingdom",
-    description:
-      "Supporting women pursuing MBA and business-related graduate programs. This fellowship aims to increase female representation in business leadership and provides networking opportunities with industry leaders.",
-    amount: 35000,
-    deadline: "May 20, 2024",
-    degree: "MBA",
-    field: "Business",
-    eligibility: [
-      "Identify as female",
-      "Minimum 2 years of professional work experience",
-      "Accepted to an accredited MBA program",
-      "Demonstrated leadership potential",
-    ],
-    benefits: [
-      "Partial tuition coverage",
-      "Professional development workshops",
-      "Networking events with industry leaders",
-      "Mentorship program with successful women executives",
-    ],
-    applyUrl: "https://example.com/women-in-business-fellowship/apply",
-    officialUrl: "https://example.com/women-in-business-fellowship",
-  },
-]
 
 export default function ScholarshipDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const [isSaved, setIsSaved] = useState(false)
+  const [scholarship, setScholarship] = useState<ScholarshipData | null>(null)
+  const [similarScholarships, setSimilarScholarships] = useState<ScholarshipData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const scholarshipId = Number(params.id)
-  const scholarship = scholarships.find((s) => s.id === scholarshipId)
+  const scholarshipId = params.id as string
 
-  if (!scholarship) {
+  useEffect(() => {
+    const fetchScholarship = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/scholarships/${scholarshipId}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          setScholarship(data.data)
+          // Fetch similar scholarships
+          fetchSimilarScholarships(data.data)
+        } else {
+          setError(data.message || 'Failed to fetch scholarship')
+        }
+      } catch (err) {
+        setError('Failed to fetch scholarship details')
+        console.error('Error fetching scholarship:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const fetchSimilarScholarships = async (currentScholarship: ScholarshipData) => {
+      try {
+        const response = await fetch(`/api/scholarships?limit=10&field=${currentScholarship.field}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          // Filter out current scholarship and take first 3
+          const similar = data.data
+            .filter((s: ScholarshipData) => s.id !== currentScholarship.id)
+            .slice(0, 3)
+          setSimilarScholarships(similar)
+        }
+      } catch (err) {
+        console.error('Error fetching similar scholarships:', err)
+      }
+    }
+
+    if (scholarshipId) {
+      fetchScholarship()
+    }
+  }, [scholarshipId])
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto p-4 md:p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading scholarship details...</p>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error || !scholarship) {
     return (
       <DashboardLayout>
         <div className="container mx-auto p-4 md:p-6">
@@ -170,9 +127,34 @@ export default function ScholarshipDetailsPage() {
     )
   }
 
-  // Determine funding type based on amount for demo purposes
-  const fundingType =
-    scholarship.amount > 40000 ? "Fully Funded" : scholarship.amount > 20000 ? "Partially Funded" : "Merit-based"
+  // Determine funding type based on amount and other criteria
+  const getFundingType = () => {
+    if (scholarship?.fully_funded === "Yes") return "Fully Funded"
+    if (scholarship?.benefits?.toLowerCase().includes("full")) return "Fully Funded"
+    if (scholarship?.benefits?.toLowerCase().includes("partial")) return "Partially Funded"
+    if (scholarship?.amount && scholarship.amount > 40000) return "Fully Funded"
+    if (scholarship?.amount && scholarship.amount > 20000) return "Partially Funded"
+    return "Merit-based"
+  }
+
+  const fundingType = getFundingType()
+
+  // Parse eligibility criteria and benefits if they're strings
+  const parseListString = (str?: string): string[] => {
+    if (!str) return []
+    // Try to parse as JSON array first, otherwise split by common delimiters
+    try {
+      const parsed = JSON.parse(str)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // If not JSON, split by bullet points, newlines, or semicolons
+      return str.split(/[•\n;]/).filter(item => item.trim()).map(item => item.trim())
+    }
+    return [str]
+  }
+
+  const eligibilityCriteria = parseListString(scholarship?.eligibility_criteria)
+  const benefitsList = parseListString(scholarship?.benefits)
 
   return (
     <DashboardLayout>
@@ -217,37 +199,57 @@ export default function ScholarshipDetailsPage() {
 
                 <div>
                   <h3 className="font-medium mb-2">Eligibility Requirements</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                    {scholarship.eligibility.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
+                  {eligibilityCriteria.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                      {eligibilityCriteria.map((item: string, index: number) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground">Eligibility criteria not specified</p>
+                  )}
                 </div>
 
                 <Separator />
 
                 <div>
                   <h3 className="font-medium mb-2">Benefits</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                    {scholarship.benefits.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
+                  {benefitsList.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                      {benefitsList.map((item: string, index: number) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground">Benefits information not specified</p>
+                  )}
                 </div>
 
                 <div className="pt-4 flex gap-2">
-                  <Button className="flex-1" asChild>
-                    <a href={scholarship.applyUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Apply Now
-                    </a>
-                  </Button>
-                  <Button className="flex-1" variant="outline" asChild>
-                    <a href={scholarship.officialUrl} target="_blank" rel="noopener noreferrer">
-                      <Globe className="mr-2 h-4 w-4" />
-                      Official Website
-                    </a>
-                  </Button>
+                  {scholarship.apply_url ? (
+                    <Button className="flex-1" asChild>
+                      <a href={scholarship.apply_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Apply Now
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button className="flex-1" disabled>
+                      Application Link Not Available
+                    </Button>
+                  )}
+                  {scholarship.official_url ? (
+                    <Button className="flex-1" variant="outline" asChild>
+                      <a href={scholarship.official_url} target="_blank" rel="noopener noreferrer">
+                        <Globe className="mr-2 h-4 w-4" />
+                        Official Website
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button className="flex-1" variant="outline" disabled>
+                      Official Link Not Available
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -261,7 +263,9 @@ export default function ScholarshipDetailsPage() {
               <CardContent className="space-y-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Amount</h3>
-                  <p className="text-xl font-bold">${scholarship.amount.toLocaleString()}</p>
+                  <p className="text-xl font-bold">
+                    {scholarship.amount ? `$${scholarship.amount.toLocaleString()}` : 'Amount varies'}
+                  </p>
                 </div>
 
                 <div>
@@ -294,13 +298,8 @@ export default function ScholarshipDetailsPage() {
                 <CardTitle>Similar Scholarships</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {scholarships
-                  .filter(
-                    (s) =>
-                      s.id !== scholarship.id && (s.field === scholarship.field || s.degree === scholarship.degree),
-                  )
-                  .slice(0, 3)
-                  .map((s) => (
+                {similarScholarships.length > 0 ? (
+                  similarScholarships.map((s: ScholarshipData) => (
                     <div key={s.id} className="border-b pb-3 last:border-0 last:pb-0">
                       <Link href={`/scholarships/${s.id}`} className="hover:underline font-medium">
                         {s.title}
@@ -315,7 +314,10 @@ export default function ScholarshipDetailsPage() {
                         </Badge>
                       </div>
                     </div>
-                  ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No similar scholarships found</p>
+                )}
               </CardContent>
             </Card>
           </div>

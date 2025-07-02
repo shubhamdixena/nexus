@@ -1,6 +1,6 @@
 "use client"
 
-import { Bookmark, Filter, Globe, Search } from "lucide-react"
+import { Bookmark, Filter, Globe, Search, Loader2, Calendar, DollarSign, ExternalLink, MapPin } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,20 +10,100 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { useScholarships } from "@/hooks/use-cached-data"
+import { ScholarshipPagination } from "@/components/scholarship-pagination"
+
+// API response scholarship interface (different from the legacy one below)
+interface ScholarshipData {
+  id: string
+  title: string
+  organization?: string
+  country?: string
+  amount?: number | null
+  deadline: string
+  degree?: string
+  field?: string
+  description?: string
+  eligibility_criteria?: string
+  benefits?: string
+  fully_funded?: string
+  official_url?: string
+  apply_url?: string
+  status?: string
+  created_at: string
+  updated_at: string
+}
 
 function ScholarshipsPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(6)
   const [filters, setFilters] = useState({
     countries: [] as string[],
     fundingTypes: [] as string[],
   })
 
-  const countries = Array.from(new Set(scholarships.map((s) => s.country)))
+  // Fetch scholarships using the hook with pagination
+  const { data: scholarshipResponse, loading, error, refetch } = useScholarships({
+    page: currentPage,
+    limit: itemsPerPage,
+    search: searchTerm,
+    country: filters.countries.length === 1 ? filters.countries[0] : undefined
+  })
+
+  const scholarships = scholarshipResponse?.data || []
+  const pagination = scholarshipResponse?.pagination || {
+    page: 1,
+    limit: itemsPerPage,
+    total: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrev: false
+  }
+
+  // Reset to first page when search or filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, filters])
+
+  // Extract unique countries from fetched data (we'll get all countries for filters)
+  const [allCountries, setAllCountries] = useState<string[]>([])
+  
+  // Fetch all countries for filter dropdown
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const response = await fetch('/api/scholarships?limit=100')
+        const data = await response.json()
+        if (data.success) {
+          const countries = Array.from(new Set(
+            data.data
+              .map((s: ScholarshipData) => s.country)
+              .filter((country: string | undefined): country is string => Boolean(country))
+          )) as string[]
+          setAllCountries(countries)
+        }
+      } catch (error) {
+        console.error('Failed to fetch countries:', error)
+      }
+    }
+    fetchCountries()
+  }, [])
   const fundingTypes = ["Fully Funded", "Partially Funded", "Merit-based"]
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1) // Reset to first page when changing items per page
+  }
 
   const toggleCountryFilter = (country: string) => {
     setFilters((prev) => {
@@ -47,21 +127,54 @@ function ScholarshipsPage() {
 
   const resetFilters = () => {
     setFilters({ countries: [], fundingTypes: [] })
+    setSearchTerm("")
   }
 
-  const filteredScholarships = scholarships.filter((scholarship) => {
-    // If no country filters are selected, show all countries
-    const countryMatch = filters.countries.length === 0 || filters.countries.includes(scholarship.country)
+  // Apply client-side funding type filter since API doesn't support this yet
+  const filteredScholarships = scholarships.filter((scholarship: ScholarshipData) => {
+    if (filters.fundingTypes.length === 0) return true
 
-    // For demo purposes, we'll assign funding types based on amount
-    const fundingType =
-      scholarship.amount > 40000 ? "Fully Funded" : scholarship.amount > 20000 ? "Partially Funded" : "Merit-based"
+    const isFullyFunded = scholarship.fully_funded === "Yes" || 
+      (scholarship.benefits && scholarship.benefits.toLowerCase().includes("full"))
+    const isPartiallyFunded = scholarship.benefits && 
+      (scholarship.benefits.toLowerCase().includes("partial") || 
+       scholarship.benefits.toLowerCase().includes("tuition"))
+    
+    const fundingType = isFullyFunded ? "Fully Funded" : 
+                       isPartiallyFunded ? "Partially Funded" : "Merit-based"
 
-    // If no funding type filters are selected, show all funding types
-    const fundingMatch = filters.fundingTypes.length === 0 || filters.fundingTypes.includes(fundingType)
-
-    return countryMatch && fundingMatch
+    return filters.fundingTypes.includes(fundingType)
   })
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto p-4 md:p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading scholarships...</p>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto p-4 md:p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <p className="text-destructive mb-4">Error loading scholarships: {error}</p>
+              <Button onClick={() => refetch()}>Retry</Button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout>
@@ -110,7 +223,7 @@ function ScholarshipsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Countries</SelectItem>
-                        {countries.map((country) => (
+                        {allCountries.map((country) => (
                           <SelectItem key={country} value={country}>
                             {country}
                           </SelectItem>
@@ -191,7 +304,13 @@ function ScholarshipsPage() {
             </Tabs>
             <div className="relative w-72">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="search" placeholder="Search scholarships..." className="pl-8" />
+              <Input 
+                type="search" 
+                placeholder="Search scholarships..." 
+                className="pl-8" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
 
@@ -205,11 +324,24 @@ function ScholarshipsPage() {
               </Button>
             </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredScholarships.map((scholarship) => (
-                <ScholarshipCard key={scholarship.id} scholarship={scholarship} />
-              ))}
-            </div>
+            <>
+              <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {filteredScholarships.map((scholarship: ScholarshipData) => (
+                  <ScholarshipCard key={scholarship.id} scholarship={scholarship} />
+                ))}
+              </div>
+              
+              {/* Pagination */}
+              <ScholarshipPagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.total}
+                itemsPerPage={pagination.limit}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                isLoading={loading}
+              />
+            </>
           )}
         </div>
       </div>
@@ -217,172 +349,68 @@ function ScholarshipsPage() {
   )
 }
 
-interface Scholarship {
-  id: number
-  title: string // Scholarship Name
-  description: string
-  eligibility: string[]
-  benefits: string[]
-  deadline: string
-  applyUrl: string
-  officialUrl: string
-  // Keep these fields for compatibility with existing UI
-  organization?: string
-  country?: string
-  amount?: number
-  degree?: string
-  field?: string
-}
-
-const scholarships: Scholarship[] = [
-  {
-    id: 1,
-    title: "Amsterdam Excellence Scholarship",
-    organization: "University of Amsterdam",
-    country: "Netherlands",
-    description:
-      "Prestigious scholarship offered by the University of Amsterdam for exceptionally talented international students pursuing master's programs. The award aims to attract top global talent and foster academic excellence in a variety of disciplines.",
-    amount: 25000,
-    deadline: "March 1, 2026",
-    degree: "Masters",
-    field: "Various",
-    eligibility: [
-      "Non-EU students with academic excellence (top 10% of their class)",
-      "Strong ambition and relevance of the Master's program to future career",
-      "Two-year Master's programs have possibility of extension for a second year",
-    ],
-    benefits: [
-      "€25,000 per year (covering tuition and living expenses)",
-      "Access to a select community of scholars",
-      "Opportunity for special extracurricular activities",
-    ],
-    applyUrl:
-      "https://www.uva.nl/en/education/master-s/scholarships--tuition/scholarships-and-loans/amsterdam-excellence-scholarship/amsterdam-excellence-scholarship.html",
-    officialUrl:
-      "https://www.uva.nl/en/education/master-s/scholarships--tuition/scholarships-and-loans/amsterdam-excellence-scholarship/amsterdam-excellence-scholarship.html",
-  },
-  {
-    id: 2,
-    title: "Global Leaders Scholarship",
-    organization: "International Education Foundation",
-    country: "United States",
-    description:
-      "Full scholarship for outstanding students pursuing graduate studies in STEM fields. This scholarship aims to support future leaders who will make significant contributions to technological innovation and scientific advancement.",
-    amount: 50000,
-    deadline: "March 15, 2024",
-    degree: "Masters",
-    field: "STEM",
-    eligibility: [
-      "Minimum GPA of 3.5 on a 4.0 scale",
-      "Demonstrated leadership experience",
-      "Strong research background",
-      "Two letters of recommendation",
-    ],
-    benefits: [
-      "Full tuition coverage",
-      "Monthly stipend for living expenses",
-      "Research funding allowance",
-      "Conference travel support",
-    ],
-    applyUrl: "https://example.com/global-leaders-scholarship/apply",
-    officialUrl: "https://example.com/global-leaders-scholarship",
-  },
-  {
-    id: 3,
-    title: "Future Innovators Grant",
-    organization: "Tech Innovation Council",
-    country: "Canada",
-    description:
-      "Scholarship for students with innovative ideas in technology and computer science. This grant supports creative thinkers who are developing novel solutions to real-world problems through technology.",
-    amount: 25000,
-    deadline: "April 30, 2024",
-    degree: "Bachelors",
-    field: "Computer Science",
-    eligibility: [
-      "Enrolled in an accredited computer science program",
-      "Demonstrated interest in innovation and entrepreneurship",
-      "Portfolio of projects or prototypes",
-      "One letter of recommendation",
-    ],
-    benefits: [
-      "Partial tuition coverage",
-      "Mentorship from industry professionals",
-      "Access to innovation labs and resources",
-      "Internship opportunities with partner companies",
-    ],
-    applyUrl: "https://example.com/future-innovators-grant/apply",
-    officialUrl: "https://example.com/future-innovators-grant",
-  },
-  {
-    id: 4,
-    title: "Women in Business Fellowship",
-    organization: "Global Business Association",
-    country: "United Kingdom",
-    description:
-      "Supporting women pursuing MBA and business-related graduate programs. This fellowship aims to increase female representation in business leadership and provides networking opportunities with industry leaders.",
-    amount: 35000,
-    deadline: "May 20, 2024",
-    degree: "MBA",
-    field: "Business",
-    eligibility: [
-      "Identify as female",
-      "Minimum 2 years of professional work experience",
-      "Accepted to an accredited MBA program",
-      "Demonstrated leadership potential",
-    ],
-    benefits: [
-      "Partial tuition coverage",
-      "Professional development workshops",
-      "Networking events with industry leaders",
-      "Mentorship program with successful women executives",
-    ],
-    applyUrl: "https://example.com/women-in-business-fellowship/apply",
-    officialUrl: "https://example.com/women-in-business-fellowship",
-  },
-]
-
-function ScholarshipCard({ scholarship }: { scholarship: Scholarship }) {
-  // Determine funding type based on amount for demo purposes
-  const fundingType =
-    scholarship.amount && scholarship.amount > 40000
-      ? "Fully Funded"
-      : scholarship.amount && scholarship.amount > 20000
-        ? "Partially Funded"
-        : "Merit-based"
-
+function ScholarshipCard({ scholarship }: { scholarship: ScholarshipData }) {
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md">
-      <div className="h-2 bg-primary" />
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-xl">{scholarship.title}</CardTitle>
-            <CardDescription className="mt-1 flex items-center gap-1">
-              <Globe className="h-3.5 w-3.5" />
-              {scholarship.organization} • {scholarship.country}
-            </CardDescription>
-          </div>
-          <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
-            <Bookmark className="h-4 w-4" />
-            <span className="sr-only">Save scholarship</span>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-4">
+        <div className="flex justify-between items-start mb-3">
+          <CardTitle className="text-lg font-semibold leading-tight pr-2 line-clamp-2">
+            {scholarship.title}
+          </CardTitle>
+          <Button variant="ghost" size="icon" className="flex-shrink-0 h-8 w-8">
+            <Bookmark className="w-4 h-4" />
           </Button>
         </div>
+        
+        <CardDescription className="flex items-center">
+          <MapPin className="w-4 h-4 mr-2" />
+          <span className="text-sm">{scholarship.organization} • {scholarship.country}</span>
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap items-center gap-2">
-          {scholarship.amount && (
-            <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-0">
-              €{scholarship.amount.toLocaleString()}
+
+      <CardContent className="flex-1 pb-4">
+        {/* Key Info Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="flex items-center">
+            <DollarSign className="w-4 h-4 text-primary mr-2" />
+            <div>
+              <p className="text-xs text-muted-foreground">Amount</p>
+              <p className="text-sm font-semibold">
+                {scholarship.amount ? `$${scholarship.amount.toLocaleString()}` : 'Varies'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center">
+            <Calendar className="w-4 h-4 text-destructive mr-2" />
+            <div>
+              <p className="text-xs text-muted-foreground">Deadline</p>
+              <p className="text-sm font-semibold">{scholarship.deadline}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div className="flex gap-2 mb-4">
+          {scholarship.degree && (
+            <Badge variant="secondary" className="text-xs">
+              {scholarship.degree}
             </Badge>
           )}
-          {scholarship.degree && <Badge variant="outline">{scholarship.degree}</Badge>}
-          {scholarship.field && <Badge variant="outline">{scholarship.field}</Badge>}
-          <Badge variant={fundingType === "Fully Funded" ? "default" : "secondary"}>{fundingType}</Badge>
+          {scholarship.field && (
+            <Badge variant="outline" className="text-xs">
+              {scholarship.field}
+            </Badge>
+          )}
         </div>
       </CardContent>
-      <CardFooter className="pt-2 pb-4">
-        <Button className="w-full" asChild>
-          <Link href={`/scholarships/${scholarship.id}`}>View Details</Link>
+
+      {/* Action Button */}
+      <CardFooter className="pt-0">
+        <Button asChild className="w-full">
+          <Link href={`/scholarships/${scholarship.id}`}>
+            <span>View Details</span>
+            <ExternalLink className="w-4 h-4 ml-2" />
+          </Link>
         </Button>
       </CardFooter>
     </Card>
