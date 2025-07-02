@@ -5,6 +5,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useActivityTracker } from "@/hooks/use-activity-tracker"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { PerformanceMonitor } from "@/components/performance-monitor"
+import { getUserDisplayName as getDisplayName } from "@/lib/user-utils"
 // Removed optimized dashboard wrapper imports as we're using simpler components now
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -124,6 +125,7 @@ export default function Home() {
   const [schoolDeadlines, setSchoolDeadlines] = useState<DeadlineItem[]>([])
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [applications, setApplications] = useState<Application[]>([])
+  const [schoolTargets, setSchoolTargets] = useState<any[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   
   // Real-time bookmark data
@@ -285,10 +287,11 @@ export default function Home() {
         // Process school targets data - this will replace the dummy data
         if (schoolTargetsResponse.status === 'fulfilled' && schoolTargetsResponse.value.ok) {
           const schoolTargetsData = await schoolTargetsResponse.value.json()
-          // We'll store this in a new state variable
+          setSchoolTargets(schoolTargetsData.targets || [])
           console.log('School targets data:', schoolTargetsData)
         } else {
           console.error('Failed to load school targets')
+          setSchoolTargets([])
         }
 
       } catch (error) {
@@ -315,16 +318,7 @@ export default function Home() {
   }
 
   const getUserDisplayName = () => {
-    if (profileData?.first_name) {
-      return `${profileData.first_name}`
-    }
-    if (user?.user_metadata?.name) {
-      return user.user_metadata.name.split(' ')[0]
-    }
-    if (user?.email) {
-      return user.email.split('@')[0]
-    }
-    return "Student"
+    return getDisplayName(user, profileData)
   }
 
   const getActivityIcon = (resource: string) => {
@@ -481,281 +475,6 @@ export default function Home() {
     { id: "additional_docs", name: "Additional Documents", required: false }
   ]
 
-  // Extended dummy data for targeted schools (15 schools)
-  const targetedSchoolsData = [
-    {
-      id: "1",
-      schoolName: "Harvard Business School",
-      location: "Boston, MA",
-      selectedRound: "Round 1",
-      deadline: "2024-09-10",
-      applicationStatus: "essays_working",
-      preferenceRank: 1,
-      lastRemark: "Working on leadership essay, need to review draft",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: false, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "2", 
-      schoolName: "Stanford Graduate School of Business",
-      location: "Stanford, CA",
-      selectedRound: "Round 1",
-      deadline: "2024-09-12",
-      applicationStatus: "account_created",
-      preferenceRank: 2,
-      lastRemark: "Just created account, need to start application",
-      documentStatus: {
-        transcript: { uploaded: false, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: false, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "3",
-      schoolName: "Wharton School",
-      location: "Philadelphia, PA",
-      selectedRound: "Round 2",
-      deadline: "2024-01-05",
-      applicationStatus: "application_submitted",
-      preferenceRank: 3,
-      lastRemark: "Application submitted successfully, waiting for interview invite",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: true, required: true },
-        recommendations: { uploaded: true, required: true },
-        application_fee: { uploaded: true, required: true }
-      }
-    },
-    {
-      id: "4",
-      schoolName: "London Business School",
-      location: "London, UK",
-      selectedRound: "Round 1",
-      deadline: "2024-10-01",
-      applicationStatus: "draft_completed",
-      preferenceRank: 4,
-      lastRemark: "All essays drafted, sending for review this week",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "5",
-      schoolName: "MIT Sloan",
-      location: "Cambridge, MA",
-      selectedRound: "Round 1",
-      deadline: "2024-09-19",
-      applicationStatus: "interview_invited",
-      preferenceRank: 5,
-      lastRemark: "Interview scheduled for next week, preparing for behavioral questions",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: true, required: true },
-        recommendations: { uploaded: true, required: true },
-        application_fee: { uploaded: true, required: true },
-        interview: { uploaded: false, required: false }
-      }
-    },
-    {
-      id: "6",
-      schoolName: "Columbia Business School",
-      location: "New York, NY",
-      selectedRound: "Round 1",
-      deadline: "2024-09-14",
-      applicationStatus: "waiting_review",
-      preferenceRank: 6,
-      lastRemark: "Essays with mentor for final review",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: true, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "7",
-      schoolName: "Chicago Booth",
-      location: "Chicago, IL",
-      selectedRound: "Round 1",
-      deadline: "2024-09-18",
-      applicationStatus: "review_completed",
-      preferenceRank: 7,
-      lastRemark: "Review complete, final submission this weekend",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: true, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "8",
-      schoolName: "Kellogg School",
-      location: "Evanston, IL",
-      selectedRound: "Round 1",
-      deadline: "2024-09-13",
-      applicationStatus: "essays_working",
-      preferenceRank: 8,
-      lastRemark: "Working on video essay component",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "9",
-      schoolName: "Haas School of Business",
-      location: "Berkeley, CA",
-      selectedRound: "Round 1",
-      deadline: "2024-09-19",
-      applicationStatus: "account_created",
-      preferenceRank: 9,
-      lastRemark: "Need to request transcripts from university",
-      documentStatus: {
-        transcript: { uploaded: false, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: false, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "10",
-      schoolName: "Tuck School of Business",
-      location: "Hanover, NH",
-      selectedRound: "Round 1",
-      deadline: "2024-10-15",
-      applicationStatus: "draft_completed",
-      preferenceRank: 10,
-      lastRemark: "Essays completed, need to finalize recommendations",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "11",
-      schoolName: "Yale School of Management",
-      location: "New Haven, CT",
-      selectedRound: "Round 1",
-      deadline: "2024-09-26",
-      applicationStatus: "essays_working",
-      preferenceRank: 11,
-      lastRemark: "Started leadership essay, need 2 more weeks",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "12",
-      schoolName: "Fuqua School of Business",
-      location: "Durham, NC",
-      selectedRound: "Round 1",
-      deadline: "2024-09-20",
-      applicationStatus: "waiting_review",
-      preferenceRank: 12,
-      lastRemark: "Waiting for recommender to submit letter",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: true, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "13",
-      schoolName: "Ross School of Business",
-      location: "Ann Arbor, MI",
-      selectedRound: "Round 1",
-      deadline: "2024-09-30",
-      applicationStatus: "review_completed",
-      preferenceRank: 13,
-      lastRemark: "Ready to submit, just need to pay application fee",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: true, required: true },
-        recommendations: { uploaded: true, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "14",
-      schoolName: "Anderson School of Management",
-      location: "Los Angeles, CA",
-      selectedRound: "Round 1",
-      deadline: "2024-10-16",
-      applicationStatus: "account_created",
-      preferenceRank: 14,
-      lastRemark: "Just started, need to prioritize this application",
-      documentStatus: {
-        transcript: { uploaded: false, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: false, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: false, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    },
-    {
-      id: "15",
-      schoolName: "Johnson Graduate School",
-      location: "Ithaca, NY",
-      selectedRound: "Round 1",
-      deadline: "2024-10-01",
-      applicationStatus: "draft_completed",
-      preferenceRank: 15,
-      lastRemark: "Essays complete, scheduling mock interview",
-      documentStatus: {
-        transcript: { uploaded: true, required: true },
-        gmat_gre: { uploaded: true, required: true },
-        resume: { uploaded: true, required: true },
-        essays: { uploaded: false, required: true },
-        recommendations: { uploaded: true, required: true },
-        application_fee: { uploaded: false, required: true }
-      }
-    }
-  ]
-
   // Get application status badge
   const getStatusBadge = (status: string) => {
     const statusInfo = applicationStatuses.find(s => s.value === status)
@@ -904,7 +623,7 @@ export default function Home() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Your Target Schools</h2>
-          <p className="text-muted-foreground">Track deadlines and application progress across {targetedSchoolsData.length} schools</p>
+          <p className="text-muted-foreground">Track deadlines and application progress across {schoolTargets.length} schools</p>
         </div>
       </div>
 
@@ -917,7 +636,7 @@ export default function Home() {
             </div>
             <div>
               <p className="text-sm font-medium">Total Schools</p>
-              <p className="text-xl font-bold">{targetedSchoolsData.length}</p>
+              <p className="text-xl font-bold">{schoolTargets.length}</p>
             </div>
           </div>
         </Card>
@@ -930,7 +649,7 @@ export default function Home() {
             <div>
               <p className="text-sm font-medium">Urgent Deadlines</p>
               <p className="text-xl font-bold">
-                {targetedSchoolsData.filter(school => calculateDaysLeft(school.deadline) <= 7).length}
+                {schoolTargets.filter(school => school.deadline && calculateDaysLeft(school.deadline) <= 7).length}
               </p>
             </div>
           </div>
@@ -944,7 +663,7 @@ export default function Home() {
             <div>
               <p className="text-sm font-medium">Submitted</p>
               <p className="text-xl font-bold">
-                {targetedSchoolsData.filter(school => school.applicationStatus === 'application_submitted').length}
+                {schoolTargets.filter(school => school.application_status === 'application_submitted').length}
               </p>
             </div>
           </div>
@@ -958,9 +677,9 @@ export default function Home() {
             <div>
               <p className="text-sm font-medium">Interviews</p>
               <p className="text-xl font-bold">
-                {targetedSchoolsData.filter(school => 
-                  school.applicationStatus === 'interview_invited' || 
-                  school.applicationStatus === 'interview_completed'
+                {schoolTargets.filter(school => 
+                  school.application_status === 'interview_invited' || 
+                  school.application_status === 'interview_completed'
                 ).length}
               </p>
             </div>
@@ -971,33 +690,33 @@ export default function Home() {
       {/* Schools Grid */}
       <ScrollArea className="h-[700px]">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {targetedSchoolsData
-            .sort((a, b) => a.preferenceRank - b.preferenceRank)
+          {schoolTargets
+            .sort((a, b) => (a.priority_score || 0) - (b.priority_score || 0))
             .map((school) => {
-              const daysLeft = calculateDaysLeft(school.deadline)
+              const daysLeft = calculateDaysLeft(school.deadline || 'TBD')
               const urgency = getDeadlineUrgency(daysLeft)
-              const uploadedDocs = Object.values(school.documentStatus).filter(doc => doc.uploaded).length
-              const totalRequiredDocs = Object.values(school.documentStatus).filter(doc => doc.required).length
-              const statusInfo = applicationStatuses.find(s => s.value === school.applicationStatus)
+              const uploadedDocs = school.documentStatus ? Object.values(school.documentStatus).filter((doc: any) => doc.uploaded).length : 0
+              const totalRequiredDocs = school.documentStatus ? Object.values(school.documentStatus).filter((doc: any) => doc.required).length : 0
+              const statusInfo = applicationStatuses.find(s => s.value === school.application_status)
               
               return (
                 <Card key={school.id} className="group hover:shadow-lg transition-all duration-200 hover:scale-[1.02] relative">
-                  {/* Preference Rank Badge */}
+                  {/* Priority Score Badge */}
                   <div className="absolute -top-2 -left-2 z-10">
-                    <PreferenceBadge rank={school.preferenceRank} />
+                    <PreferenceBadge rank={school.priority_score || 0} />
                   </div>
 
                   <CardHeader className="pb-3">
                     <div className="space-y-2">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold leading-tight">{school.schoolName}</CardTitle>
+                          <CardTitle className="text-lg font-semibold leading-tight">{school.school_name}</CardTitle>
                           <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                             <MapPin className="h-3 w-3" />
                             {school.location}
                           </div>
                           <Badge variant="outline" className="text-xs mt-1">
-                            {school.selectedRound}
+                            {school.application_round || 'Round TBD'}
                           </Badge>
                         </div>
                         <div className="text-right">
@@ -1005,10 +724,10 @@ export default function Home() {
                             {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`}
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">
-                            {new Date(school.deadline).toLocaleDateString('en-US', {
+                            {school.deadline ? new Date(school.deadline).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric'
-                            })}
+                            }) : 'TBD'}
                           </div>
                         </div>
                       </div>
@@ -1019,7 +738,7 @@ export default function Home() {
                     {/* Application Status */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Application Status</label>
-                      <Select value={school.applicationStatus}>
+                      <Select value={school.application_status || 'not_started'}>
                         <SelectTrigger className="h-9">
                           <SelectValue />
                         </SelectTrigger>
@@ -1054,7 +773,7 @@ export default function Home() {
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last Note</label>
                       <p className="text-sm text-muted-foreground p-2 bg-muted/30 rounded-md min-h-[40px] text-left">
-                        {school.lastRemark || "No notes yet"}
+                        {school.notes || "No notes yet"}
                       </p>
                     </div>
 

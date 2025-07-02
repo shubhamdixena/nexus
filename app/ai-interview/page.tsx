@@ -66,6 +66,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/components/auth-provider'
 import { useRouter } from 'next/navigation'
+import { getUserDisplayName } from '@/lib/user-utils'
 
 // Particle Animation Component
 const ParticleField = ({ className = "" }: { className?: string }) => {
@@ -761,7 +762,7 @@ const AIInterviewPlatform = () => {
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold text-foreground mb-2">Ready to Start Your Interview?</h1>
             <p className="text-muted-foreground">
-              Welcome {user?.user_metadata?.full_name || user?.email}! Let's prepare for your MBA interview.
+              Welcome {getUserDisplayName(user)}! Let's prepare for your MBA interview.
             </p>
           </div>
 

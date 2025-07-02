@@ -16,6 +16,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useAuth } from "@/components/auth-provider"
+import { getUserDisplayName, getUserFullName, getUserInitials, getUserAvatarUrl } from "@/lib/user-utils"
 
 function AuthButtonContent() {
   const { user, loading, signOut } = useAuth()
@@ -79,13 +80,11 @@ function AuthButtonContent() {
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarImage
-              src={user.user_metadata?.avatar_url || ""}
-              alt={user.user_metadata?.name || user.email || ""}
+              src={getUserAvatarUrl(user)}
+              alt={getUserDisplayName(user)}
             />
             <AvatarFallback>
-              {user.user_metadata?.name?.charAt(0) ||
-                user.email?.charAt(0) ||
-                "U"}
+              {getUserInitials(user)}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -94,7 +93,7 @@ function AuthButtonContent() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {user.user_metadata?.name || user.email}
+              {getUserDisplayName(user)}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}

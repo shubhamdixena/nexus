@@ -39,16 +39,13 @@ function SchoolListItem({ school, isSelected, onClick, progress, isLast }: {
         }`}
         onClick={onClick}
       >
-        <div className="space-y-2">
-          <div className="flex justify-between items-start">
-            <h3 className={`font-medium text-sm leading-tight ${isSelected ? 'text-primary' : ''}`}>
-              {school.school_name}
-            </h3>
-            <span className="text-xs text-muted-foreground font-medium">
-              {Math.round(progress)}%
-            </span>
-          </div>
-          <Progress value={progress} className="h-1.5" />
+        <div className="flex justify-between items-start">
+          <h3 className={`font-medium text-sm leading-tight ${isSelected ? 'text-primary' : ''}`}>
+            {school.school_name}
+          </h3>
+          <span className="text-xs text-muted-foreground font-medium">
+            {Math.round(progress)}%
+          </span>
         </div>
       </div>
       {!isLast && <Separator className="my-1 mx-1" />}
@@ -621,7 +618,7 @@ export default function ApplicationsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || !selectedSchool) return
 
-      const progressId = progressData[selectedSchool.mba_school_id]?.id
+      const progressId = progressData[selectedSchool.school_id]?.id
       if (!progressId) {
         toast.error('No application progress found')
         return
@@ -699,32 +696,46 @@ export default function ApplicationsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      let progressId = progressData[school.mba_school_id]?.id
+      let progressId = progressData[school.school_id]?.id
 
       // If no progress exists, create it
       if (!progressId) {
         try {
+          // Validate required data
+          const schoolId = school.school_id || school.id
+          if (!schoolId) {
+            console.error('School ID missing:', school)
+            toast.error('School data is incomplete. Please try selecting the school again.')
+            return
+          }
+
           const response = await fetch('/api/application-progress', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              mba_school_id: school.mba_school_id,
+              mba_school_id: schoolId,
               application_status: 'not_started',
               notes: `Application for ${school.school_name}`
             })
           })
 
-          const result = await response.json()
+          const result = await response.json().catch(() => ({}))
 
           if (!response.ok) {
-            console.error('Error creating progress:', result)
-            if (result.error === 'Application progress already exists for this school') {
+            console.error('Error creating progress:', response.status, response.statusText, result)
+            console.error('School data being sent:', {
+              mba_school_id: schoolId,
+              application_status: 'not_started',
+              notes: `Application for ${school.school_name}`
+            })
+            
+            if (result?.error === 'Application progress already exists for this school') {
               // If it already exists, fetch it
               const fetchResponse = await fetch(`/api/application-progress?include_school=false`)
               const fetchResult = await fetchResponse.json()
               
               if (fetchResponse.ok && fetchResult.data) {
-                const existingProgress = fetchResult.data.find((p: any) => p.mba_school_id === school.mba_school_id)
+                const existingProgress = fetchResult.data.find((p: any) => p.mba_school_id === schoolId)
                 if (existingProgress) {
                   progressId = existingProgress.id
                   // Refresh progress data from cache
@@ -732,11 +743,13 @@ export default function ApplicationsPage() {
                 }
               }
             } else {
-              toast.error('Failed to create application progress')
+              const errorMessage = result?.details || result?.error || 'Unknown error'
+              toast.error(`Failed to create application progress: ${errorMessage}`)
+              console.error('API Error details:', result)
               return
             }
           } else {
-            progressId = result.data.id
+            progressId = result?.data?.id
             // Refresh progress data from cache
             await refetchProgress()
           }
@@ -955,7 +968,7 @@ export default function ApplicationsPage() {
                 ) : (
                   <div className="space-y-1">
                     {targetSchools?.map((school: any, index: number) => {
-                      const progress = progressData?.[school.mba_school_id]
+                      const progress = progressData?.[school.school_id]
                       const overallProgress = progress?.overall_completion_percentage || 0
                       const isLast = index === (targetSchools?.length || 0) - 1
                       

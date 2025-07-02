@@ -35,6 +35,7 @@ import {
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
 import { CompactProfileEditForm } from "@/components/compact-profile-edit-form"
+import { getUserDisplayName, getUserFullName, getUserInitials } from "@/lib/user-utils"
 
 interface ProfileData {
   personal?: {
@@ -176,15 +177,22 @@ export function ProfileView() {
   }
 
   const getInitials = () => {
-    const first = profileData.personal?.firstName?.[0] || ""
-    const last = profileData.personal?.lastName?.[0] || ""
-    return (first + last).toUpperCase() || "U"
+    // Convert profileData format to match what the utility expects
+    const formattedProfileData = {
+      first_name: profileData.personal?.firstName,
+      last_name: profileData.personal?.lastName
+    }
+    return getUserInitials(user, formattedProfileData)
   }
 
   const getFullName = () => {
-    const first = profileData.personal?.firstName || ""
-    const last = profileData.personal?.lastName || ""
-    return first && last ? `${first} ${last}` : "Complete your profile"
+    // Convert profileData format to match what the utility expects
+    const formattedProfileData = {
+      first_name: profileData.personal?.firstName,
+      last_name: profileData.personal?.lastName
+    }
+    const fullName = getUserFullName(user, formattedProfileData)
+    return fullName && fullName !== getUserDisplayName(user) ? fullName : "Complete your profile"
   }
 
   if (isLoading) {

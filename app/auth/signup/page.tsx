@@ -71,6 +71,7 @@ export default function SignupPage() {
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
+            name: `${formData.firstName} ${formData.lastName}`.trim(),
           }
         }
       })

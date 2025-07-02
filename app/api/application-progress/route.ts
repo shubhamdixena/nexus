@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
       priority_level: body.priority_level || 3,
     }
 
+    console.log('Creating application progress with data:', progressData)
+
     const { data, error } = await supabase
       .from('user_application_progress')
       .insert(progressData)
@@ -86,7 +88,11 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating application progress:', error)
-      return NextResponse.json({ error: 'Failed to create application progress' }, { status: 500 })
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      return NextResponse.json({ 
+        error: 'Failed to create application progress',
+        details: error.message 
+      }, { status: 500 })
     }
 
     return NextResponse.json({ 

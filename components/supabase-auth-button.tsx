@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
+import { getUserDisplayName, getUserInitials, getUserAvatarUrl } from "@/lib/user-utils"
 
 export function SupabaseAuthButton() {
   const { user, loading, signOut } = useAuth()
@@ -62,16 +63,16 @@ export function SupabaseAuthButton() {
     )
   }
 
-  const displayName = user.user_metadata?.name || user.email?.split('@')[0] || 'User'
-  const avatarUrl = user.user_metadata?.avatar_url
+  const displayName = getUserDisplayName(user)
+  const avatarUrl = getUserAvatarUrl(user)
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={avatarUrl || ""} alt={displayName} />
-            <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarImage src={avatarUrl} alt={displayName} />
+            <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

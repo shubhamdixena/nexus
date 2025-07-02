@@ -111,5 +111,7 @@ async function testAdminPermissions(email) {
   }
 }
 
-// Test the specific user
-testAdminPermissions('shubhamdixena@gmail.com').catch(console.error)
+// Test with a specific user email - update this to your email when testing
+const testEmail = process.env.TEST_ADMIN_EMAIL || 'admin@example.com'
+console.log(`Testing admin permissions for: ${testEmail}`)
+testAdminPermissions(testEmail).catch(console.error)

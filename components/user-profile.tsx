@@ -37,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
+import { getUserDisplayName, getUserFullName, getUserInitials, getUserAvatarUrl } from "@/lib/user-utils"
 
 interface LoadError {
   type: 'network' | 'server' | 'unknown'
@@ -90,6 +91,7 @@ export function UserProfile() {
   const [error, setError] = useState<LoadError | null>(null)
   const [retryCount, setRetryCount] = useState(0)
 
+  const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -265,7 +267,7 @@ export function UserProfile() {
 
   const completionPercentage = profileData.profile_completion_percentage || 0
   const isProfileComplete = completionPercentage >= 80
-  const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim()
+  const fullName = getUserFullName(user, profileData)
 
   return (
     <div className="container mx-auto p-4 lg:p-6 space-y-8 max-w-6xl">
@@ -285,9 +287,9 @@ export function UserProfile() {
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
               <Avatar className="h-24 w-24 border-4 border-background shadow-xl">
-                <AvatarImage src={profileData.avatar_url} alt={fullName} />
+                <AvatarImage src={getUserAvatarUrl(user, profileData)} alt={fullName} />
                 <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
-                  {profileData.first_name?.charAt(0) || 'U'}{profileData.last_name?.charAt(0) || ''}
+                  {getUserInitials(user, profileData)}
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-3 flex-1">

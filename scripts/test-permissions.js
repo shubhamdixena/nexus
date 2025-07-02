@@ -72,5 +72,7 @@ async function testUserPermissions(email) {
   }
 }
 
-// Test the specific user
-testUserPermissions('shubhamdixena@gmail.com').catch(console.error)
+// Test with a specific user email - update this to your email when testing
+const testEmail = process.env.TEST_USER_EMAIL || 'test@example.com'
+console.log(`Testing permissions for: ${testEmail}`)
+testUserPermissions(testEmail).catch(console.error)
