@@ -469,16 +469,16 @@ export function MBASchoolsExplorer() {
             </div>
           ) : (
             <>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {mbaSchools.map((school) => (
-                  <MBASchoolCard
-                    key={school.id}
-                    school={school}
-                    isSaved={savedSchools.includes(school.id)}
-                    onToggleSave={() => toggleBookmark(school.id)}
-                  />
-                ))}
-              </div>
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {mbaSchools.map((school) => (
+                <MBASchoolCard
+                  key={school.id}
+                  school={school}
+                  isSaved={isBookmarked(school.id)}
+                  onToggleSave={() => toggleBookmark(school.id)}
+                />
+              ))}
+            </div>
 
               {totalPages > 1 && (
                 <Pagination className="mt-6">
@@ -559,7 +559,7 @@ export function MBASchoolsExplorer() {
                 <MBASchoolCard
                   key={school.id}
                   school={school}
-                  isSaved={savedSchools.includes(school.id)}
+                  isSaved={isBookmarked(school.id)}
                   onToggleSave={() => toggleBookmark(school.id)}
                 />
               ))}
@@ -579,7 +579,7 @@ export function MBASchoolsExplorer() {
                 <MBASchoolCard
                   key={school.id}
                   school={school}
-                  isSaved={savedSchools.includes(school.id)}
+                  isSaved={isBookmarked(school.id)}
                   onToggleSave={() => toggleBookmark(school.id)}
                 />
               ))}
