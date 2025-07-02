@@ -17,6 +17,8 @@ import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useApplicationProgress, useSchoolTargets } from '@/hooks/use-cached-data'
+import { useAuth } from '@/components/auth-provider'
 
 // All data is now loaded dynamically from the database
 
@@ -557,117 +559,36 @@ function AddEssayDialog({ open, onOpenChange, onAdd }: {
 }
 
 export default function ApplicationsPage() {
-  const [targetSchools, setTargetSchools] = useState<any[]>([])
   const [selectedSchool, setSelectedSchool] = useState<any>(null)
   const [otherContent, setOtherContent] = useState('')
   const [essays, setEssays] = useState<any[]>([])
   const [lors, setLors] = useState<any[]>([])
-  const [loading, setLoading] = useState(true) // For initial page load
   const [schoolContentLoading, setSchoolContentLoading] = useState(false) // For school-specific content
-  const [progressData, setProgressData] = useState<Record<string, any>>({})
   const [showAddEssayDialog, setShowAddEssayDialog] = useState(false)
-  const [dataLoaded, setDataLoaded] = useState(false) // Cache flag
   
   const supabase = createClient()
   const router = useRouter()
+  const { user } = useAuth()
+
+  // Use cached hooks for data fetching
+  const { data: targetSchools = [], loading: schoolsLoading, refetch: refetchSchools } = useSchoolTargets(user?.id)
+  const { data: progressData = {}, loading: progressLoading, refetch: refetchProgress } = useApplicationProgress(user?.id, false)
+
+  // Combined loading state
+  const loading = schoolsLoading || progressLoading
 
   // Load user's target schools and application data
   useEffect(() => {
-    loadApplicationData()
-  }, [])
+    if (!user) {
+      router.push('/auth/login')
+      return
+    }
+  }, [user, router])
 
   // Function to refresh data
   const refreshData = () => {
-    setDataLoaded(false)
-    loadApplicationData(true)
-  }
-
-  const loadApplicationData = async (forceReload = false) => {
-    // Skip loading if data is already loaded and not forcing reload
-    if (dataLoaded && !forceReload) {
-      return
-    }
-
-    try {
-      setLoading(true)
-      
-      // Check authentication
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
-        router.push('/auth/login')
-        return
-      }
-
-      // Load target schools with their MBA school details
-      const { data: targets, error: targetsError } = await supabase
-        .from('user_school_targets')
-        .select(`
-          *,
-          mba_schools:school_id (
-            id,
-            business_school,
-            location,
-            qs_mba_rank,
-            ft_global_mba_rank,
-            bloomberg_mba_rank,
-            mean_gmat,
-            avg_starting_salary,
-            tuition_total,
-            class_size
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-
-      if (targetsError) {
-        console.error('Error loading target schools:', targetsError)
-        toast.error('Failed to load target schools')
-        return
-      }
-
-      // Format the schools data
-      const formattedSchools = targets?.map(target => ({
-        id: target.id,
-        school_id: target.school_id, // Keep original schema field name
-        mba_school_id: target.school_id, // Also provide for compatibility
-        school_name: target.mba_schools?.business_school || 'Unknown School',
-        business_school: target.mba_schools?.business_school,
-        location: target.mba_schools?.location || 'Unknown Location',
-        target_category: target.target_category, // Use correct schema field name
-        priority_score: target.priority_score, // Use correct schema field name
-        notes: target.notes
-      })) || []
-
-      setTargetSchools(formattedSchools)
-
-      // Load application progress for all schools
-      try {
-        const response = await fetch('/api/application-progress?include_school=false')
-        const result = await response.json()
-
-        if (response.ok && result.data) {
-          // Create a map of school_id -> progress data
-          const progressMap = result.data.reduce((acc: any, progress: any) => {
-            acc[progress.mba_school_id] = progress
-            return acc
-          }, {})
-          setProgressData(progressMap)
-        } else {
-          console.error('Error loading progress:', result)
-        }
-      } catch (error) {
-        console.error('Error loading progress:', error)
-      }
-
-      // Mark data as loaded
-      setDataLoaded(true)
-
-    } catch (error) {
-      console.error('Error loading application data:', error)
-      toast.error('Failed to load application data')
-    } finally {
-      setLoading(false)
-    }
+    refetchSchools()
+    refetchProgress()
   }
 
   const handleSaveEssay = async (id: string, content: string) => {
@@ -806,10 +727,8 @@ export default function ApplicationsPage() {
                 const existingProgress = fetchResult.data.find((p: any) => p.mba_school_id === school.mba_school_id)
                 if (existingProgress) {
                   progressId = existingProgress.id
-                  setProgressData(prev => ({
-                    ...prev,
-                    [school.mba_school_id]: existingProgress
-                  }))
+                  // Refresh progress data from cache
+                  await refetchProgress()
                 }
               }
             } else {
@@ -818,10 +737,8 @@ export default function ApplicationsPage() {
             }
           } else {
             progressId = result.data.id
-            setProgressData(prev => ({
-              ...prev,
-              [school.mba_school_id]: result.data
-            }))
+            // Refresh progress data from cache
+            await refetchProgress()
           }
         } catch (error) {
           console.error('Error creating progress:', error)
@@ -996,10 +913,10 @@ export default function ApplicationsPage() {
 
   // Auto-select first school when target schools are loaded
   useEffect(() => {
-    if (targetSchools.length > 0 && !selectedSchool && !loading && !schoolContentLoading && dataLoaded) {
+    if (targetSchools && targetSchools.length > 0 && !selectedSchool && !loading && !schoolContentLoading) {
       handleSchoolSelect(targetSchools[0])
     }
-  }, [targetSchools, selectedSchool, loading, schoolContentLoading, dataLoaded])
+  }, [targetSchools, selectedSchool, loading, schoolContentLoading])
 
   return (
     <DashboardLayout>
@@ -1028,7 +945,7 @@ export default function ApplicationsPage() {
                     <Loader2 className="h-6 w-6 animate-spin" />
                     <span className="ml-2 text-sm text-muted-foreground">Loading schools...</span>
                   </div>
-                ) : targetSchools.length === 0 ? (
+                ) : !targetSchools || targetSchools.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-sm text-muted-foreground">No target schools found.</p>
                     <p className="text-xs text-muted-foreground mt-2">
@@ -1037,10 +954,10 @@ export default function ApplicationsPage() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    {targetSchools.map((school, index) => {
-                      const progress = progressData[school.mba_school_id]
+                    {targetSchools?.map((school: any, index: number) => {
+                      const progress = progressData?.[school.mba_school_id]
                       const overallProgress = progress?.overall_completion_percentage || 0
-                      const isLast = index === targetSchools.length - 1
+                      const isLast = index === (targetSchools?.length || 0) - 1
                       
                       return (
                         <SchoolListItem

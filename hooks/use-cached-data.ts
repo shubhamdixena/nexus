@@ -29,7 +29,8 @@ export function useCachedData<T = any>({
   const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async (forceRefresh = false) => {
-    if (!enabled) return
+    // Skip during SSR
+    if (typeof window === 'undefined' || !enabled) return
 
     try {
       setLoading(true)
@@ -67,6 +68,9 @@ export function useCachedData<T = any>({
   }, [cacheKey])
 
   useEffect(() => {
+    // Skip during SSR
+    if (typeof window === 'undefined') return
+    
     if (enabled) {
       // First check if we have cached data
       const cached = CacheManager.get<T>(cacheKey)
@@ -163,4 +167,73 @@ export function useDeadlines(userId: string, start?: string, end?: string) {
     dependencies: [userId, start, end],
     enabled: !!userId
   })
-} 
+}
+
+export function useApplicationProgress(userId?: string, includeSchool = true) {
+  return useCachedData({
+    cacheKey: `application_progress:${userId}:${includeSchool}`,
+    fetchFn: async () => {
+      const params = new URLSearchParams()
+      if (!includeSchool) params.append('include_school', 'false')
+      
+      const response = await fetch(`/api/application-progress?${params.toString()}`)
+      if (!response.ok) throw new Error('Failed to fetch application progress')
+      const result = await response.json()
+      // Convert array to object map for easier access
+      if (result.data && Array.isArray(result.data)) {
+        return result.data.reduce((acc: any, progress: any) => {
+          acc[progress.mba_school_id] = progress
+          return acc
+        }, {})
+      }
+      return {}
+    },
+    cacheTtl: 2 * 60 * 1000, // 2 minutes - frequently changing data
+    dependencies: [userId, includeSchool],
+    enabled: !!userId
+  })
+}
+
+export function useSchoolTargets(userId?: string) {
+  return useCachedData({
+    cacheKey: `school_targets:${userId}`,
+    fetchFn: async () => {
+      const response = await fetch('/api/school-targets')
+      if (!response.ok) throw new Error('Failed to fetch school targets')
+      const result = await response.json()
+      return result.targets || [] // Extract the targets array
+    },
+    cacheTtl: 10 * 60 * 1000, // 10 minutes
+    dependencies: [userId],
+    enabled: !!userId
+  })
+}
+
+export function useSchoolDeadlines() {
+  return useCachedData({
+    cacheKey: 'school_deadlines',
+    fetchFn: async () => {
+      const response = await fetch('/api/school-deadlines')
+      if (!response.ok) throw new Error('Failed to fetch school deadlines')
+      const data = await response.json()
+      return data.deadlines
+    },
+    cacheTtl: 30 * 60 * 1000, // 30 minutes - rarely changes
+  })
+}
+
+export function useAdminData<T>(endpoint: string, params: any = {}, ttl = 5 * 60 * 1000) {
+  const cacheKey = `admin_${endpoint}:${JSON.stringify(params)}`
+  
+  return useCachedData({
+    cacheKey,
+    fetchFn: async () => {
+      const queryParams = new URLSearchParams(params)
+      const response = await fetch(`/api/admin/${endpoint}?${queryParams.toString()}`)
+      if (!response.ok) throw new Error(`Failed to fetch ${endpoint}`)
+      return await response.json()
+    },
+    cacheTtl: ttl,
+    dependencies: [endpoint, JSON.stringify(params)]
+  })
+}

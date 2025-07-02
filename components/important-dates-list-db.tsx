@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { format, isAfter, isBefore, addDays } from "date-fns";
 import { CalendarDays, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useDeadlines, useSchoolDeadlines } from "@/hooks/use-cached-data";
+import { useAuth } from "@/components/auth-provider";
 
 // Types
 interface Deadline {
@@ -24,28 +25,13 @@ interface Deadline {
   source_id?: string;
   created_at: string;
   updated_at: string;
+  // School deadline specific fields
+  school_name?: string;
+  isSchoolDeadline?: boolean;
 }
 
-// API functions
+// API functions - keep for updates only
 const deadlineAPI = {
-  async getDeadlines(): Promise<Deadline[]> {
-    const response = await fetch('/api/deadlines');
-    if (!response.ok) {
-      throw new Error('Failed to fetch deadlines');
-    }
-    const data = await response.json();
-    return data.deadlines;
-  },
-
-  async getSchoolDeadlines(): Promise<any[]> {
-    const response = await fetch('/api/school-deadlines');
-    if (!response.ok) {
-      throw new Error('Failed to fetch school deadlines');
-    }
-    const data = await response.json();
-    return data.deadlines;
-  },
-
   async updateDeadline(id: string, updates: Partial<Deadline>): Promise<Deadline> {
     const response = await fetch(`/api/deadlines/${id}`, {
       method: 'PATCH',
@@ -62,55 +48,24 @@ const deadlineAPI = {
 };
 
 export function ImportantDatesListDB() {
-  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [schoolDeadlines, setSchoolDeadlines] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Use cached hooks for both personal and school deadlines
+  // Only fetch personal deadlines if user is authenticated
+  const { data: deadlines = [], loading: deadlinesLoading, refetch: refetchDeadlines } = useDeadlines(user?.id || '');
+  const { data: schoolDeadlines = [], loading: schoolDeadlinesLoading, refetch: refetchSchoolDeadlines } = useSchoolDeadlines();
 
-  useEffect(() => {
-    loadDeadlines();
-  }, []);
-
-  const loadDeadlines = async () => {
-    try {
-      setLoading(true);
-      
-      // Load personal deadlines (may be empty if not authenticated)
-      let personalDeadlines: Deadline[] = [];
-      try {
-        personalDeadlines = await deadlineAPI.getDeadlines();
-      } catch (error) {
-        console.warn('Failed to load personal deadlines:', error);
-      }
-      
-      // Load school deadlines (available to everyone)
-      let globalSchoolDeadlines: any[] = [];
-      try {
-        globalSchoolDeadlines = await deadlineAPI.getSchoolDeadlines();
-      } catch (error) {
-        console.warn('Failed to load school deadlines:', error);
-      }
-      
-      setDeadlines(personalDeadlines);
-      setSchoolDeadlines(globalSchoolDeadlines);
-    } catch (error) {
-      console.error('Error loading deadlines:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load important dates",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Combined loading state
+  const loading = deadlinesLoading || schoolDeadlinesLoading;
 
   const handleToggleComplete = async (deadline: Deadline) => {
     try {
       await deadlineAPI.updateDeadline(deadline.id, {
         completed: !deadline.completed
       });
-      await loadDeadlines(); // Reload to get updated data
+      // Refresh cached data instead of reloading everything
+      await refetchDeadlines();
       toast({
         title: "Success",
         description: `Deadline marked as ${!deadline.completed ? 'completed' : 'incomplete'}`
@@ -129,22 +84,22 @@ export function ImportantDatesListDB() {
   const today = new Date();
   const nextWeek = addDays(today, 7);
   
-  // Filter personal deadlines
-  const personalDeadlinesFiltered = deadlines
-    .filter(deadline => !deadline.completed)
-    .filter(deadline => {
+  // Filter personal deadlines - add null check
+  const personalDeadlinesFiltered = (deadlines || [])
+    .filter((deadline: Deadline) => !deadline.completed)
+    .filter((deadline: Deadline) => {
       const deadlineDate = new Date(deadline.deadline_date);
       return isAfter(deadlineDate, today) || format(deadlineDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
     })
-    .map(deadline => ({ ...deadline, isSchoolDeadline: false }));
+    .map((deadline: Deadline) => ({ ...deadline, isSchoolDeadline: false }));
 
-  // Filter school deadlines
-  const schoolDeadlinesFiltered = schoolDeadlines
-    .filter(deadline => {
+  // Filter school deadlines - add null check
+  const schoolDeadlinesFiltered = (schoolDeadlines || [])
+    .filter((deadline: Deadline) => {
       const deadlineDate = new Date(deadline.deadline_date);
       return isAfter(deadlineDate, today) || format(deadlineDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
     })
-    .map(deadline => ({
+    .map((deadline: Deadline) => ({
       ...deadline,
       completed: false, // School deadlines can't be completed
       isSchoolDeadline: true
@@ -155,8 +110,8 @@ export function ImportantDatesListDB() {
   const hasPersonalDeadlines = personalDeadlinesFiltered.length > 0;
   const displayDeadlines = hasPersonalDeadlines ? personalDeadlinesFiltered : schoolDeadlinesFiltered;
   
-  const importantDates = displayDeadlines
-    .sort((a, b) => {
+  const importantDates = (displayDeadlines || [])
+    .sort((a: Deadline, b: Deadline) => {
       // Sort by date first
       const dateCompare = new Date(a.deadline_date).getTime() - new Date(b.deadline_date).getTime();
       return dateCompare;
@@ -206,8 +161,8 @@ export function ImportantDatesListDB() {
       <CardContent>
         {importantDates.length > 0 ? (
           <div className="space-y-3">
-            {importantDates.map((deadline) => {
-              const isSchoolDeadline = (deadline as any).isSchoolDeadline;
+            {importantDates.map((deadline: Deadline) => {
+              const isSchoolDeadline = deadline.isSchoolDeadline;
               const isPersonalDeadline = !isSchoolDeadline;
               
               return (
@@ -285,4 +240,4 @@ export function ImportantDatesListDB() {
       </CardContent>
     </Card>
   );
-} 
+}
