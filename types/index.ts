@@ -42,7 +42,7 @@ export interface ScholarshipFilters {
 
 export interface University {
   id: string
-  name: string
+  university_name: string
   location: string
   country: string
   ranking?: number | null

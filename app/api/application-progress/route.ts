@@ -73,8 +73,6 @@ export async function POST(request: NextRequest) {
     const progressData = {
       user_id: user.id,
       mba_school_id: body.mba_school_id,
-      application_round: body.application_round || null,
-      target_deadline: body.target_deadline || null,
       application_status: body.application_status || 'not_started',
       notes: body.notes || null,
       priority_level: body.priority_level || 3,

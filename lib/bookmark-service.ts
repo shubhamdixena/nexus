@@ -63,7 +63,7 @@ class BookmarkService {
             body: JSON.stringify({
               source_type: 'school_bookmark',
               source_id: itemId,
-              source_name: schoolData.school?.name || `School ${itemId}`
+              source_name: schoolData.data?.business_school || schoolData.data?.name || `School ${itemId}`
             })
           })
         }

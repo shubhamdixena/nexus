@@ -45,7 +45,7 @@ export class UniversityRealtimeService {
 
       // Apply pagination
       query = query.range(offset, offset + limit - 1)
-      query = query.order("name", { ascending: true })
+      query = query.order("university_name", { ascending: true })
 
       const { data, error, count } = await query
 
@@ -113,7 +113,7 @@ export class UniversityRealtimeService {
           const { data } = await client
             .from('universities')
             .select('*')
-            .order('name', { ascending: true })
+            .order('university_name', { ascending: true })
           
           if (data) {
             callback(data)

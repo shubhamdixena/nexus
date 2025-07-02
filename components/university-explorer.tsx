@@ -80,7 +80,7 @@ const UniversityExplorer = React.memo(() => {
     if (!searchQuery.trim()) return universities
     
     return universities.filter(uni =>
-      uni.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              uni.university_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       uni.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       uni.country?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       uni.programs?.some(program => 
@@ -580,7 +580,7 @@ function UniversityCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-lg font-bold line-clamp-1">{university.name}</h3>
+                                  <h3 className="text-lg font-bold line-clamp-1">{university.university_name}</h3>
             <div className="flex items-center text-sm text-muted-foreground mt-1">
               <MapPin className="h-3.5 w-3.5 mr-1" />
               <span>{university.location}</span>

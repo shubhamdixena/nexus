@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Apply search filter
     if (search && search.trim()) {
-      query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
+      query = query.or(`university_name.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
     }
 
     // Apply country filter
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     // Apply pagination
     query = query.range(offset, offset + limit - 1)
-    query = query.order("name", { ascending: true })
+    query = query.order("university_name", { ascending: true })
 
     const { data, error, count } = await query
 
@@ -135,9 +135,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Basic validation
-    if (!body.name || !body.location || !body.country) {
+    if (!body.university_name || !body.location || !body.country) {
       return NextResponse.json(
-        { success: false, message: "Name, location, and country are required" },
+        { success: false, message: "University name, location, and country are required" },
         { status: 400 }
       )
     }

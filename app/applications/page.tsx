@@ -633,8 +633,8 @@ export default function ApplicationsPage() {
         school_name: target.mba_schools?.business_school || 'Unknown School',
         business_school: target.mba_schools?.business_school,
         location: target.mba_schools?.location || 'Unknown Location',
-        target_type: target.target_category, // Correct field name from schema
-        priority: target.priority_score, // Correct field name from schema
+        target_category: target.target_category, // Use correct schema field name
+        priority_score: target.priority_score, // Use correct schema field name
         notes: target.notes
       })) || []
 
@@ -1075,7 +1075,7 @@ export default function ApplicationsPage() {
                   <div>
                     <h2 className="font-semibold text-lg">{selectedSchool.school_name}</h2>
                     <p className="text-sm text-muted-foreground">
-                      {selectedSchool.location} • {selectedSchool.target_type || 'Target'} • Priority: {selectedSchool.priority || 'N/A'}
+                      {selectedSchool.location} • {selectedSchool.target_category || 'Target'} • Priority: {selectedSchool.priority_score || 'N/A'}
                     </p>
                   </div>
                   <div className="flex items-center gap-6 text-sm">

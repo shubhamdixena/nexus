@@ -102,7 +102,7 @@ interface Application {
   updated_at: string
   universities?: {
     id: string
-    name: string
+    university_name: string
     location: string
     country: string
   }
@@ -245,10 +245,17 @@ export default function Home() {
           if (applicationsData.data && Array.isArray(applicationsData.data)) {
             setApplications(applicationsData.data)
           } else {
+            console.warn('Applications API returned unexpected data structure:', applicationsData)
             setApplications([])
           }
         } else {
-          console.error('Failed to load applications')
+          if (applicationsResponse.status === 'fulfilled') {
+            // Log the actual error from the API
+            const errorText = await applicationsResponse.value.text()
+            console.error('Failed to load applications - API error:', errorText)
+          } else {
+            console.error('Failed to load applications - Network error:', applicationsResponse.reason)
+          }
           setApplications([])
         }
 
@@ -1300,12 +1307,6 @@ export default function Home() {
                   <Link href="/mba-schools">
                     <School className="h-4 w-4 mr-2" />
                     Explore MBA Schools
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link href="/applications">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Create Application
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>

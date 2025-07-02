@@ -294,7 +294,7 @@ export interface Database {
       universities: {
         Row: {
           id: string
-          name: string
+          university_name: string
           location: string
           country: string
           ranking: string | null
@@ -311,7 +311,7 @@ export interface Database {
         }
         Insert: {
           id?: string
-          name: string
+          university_name: string
           location: string
           country: string
           ranking?: string | null
@@ -328,7 +328,7 @@ export interface Database {
         }
         Update: {
           id?: string
-          name?: string
+          university_name?: string
           location?: string
           country?: string
           ranking?: string | null
@@ -349,8 +349,7 @@ export interface Database {
           // Primary fields
           id: string
           number?: number | null
-          business_school?: string | null
-          name?: string | null
+          business_school?: string | null  // Primary name field (no 'name' field)
           description?: string | null
           location?: string | null
           country?: string | null
@@ -363,9 +362,9 @@ export interface Database {
           international_students?: string | null
           international_students_percentage?: number | null
           
-          // Test scores and academic requirements
-          mean_gmat?: number | null
-          mean_gpa?: number | null
+          // Test scores and academic requirements (standardized field names)
+          mean_gmat?: number | null  // Primary GMAT field (no avg_gmat)
+          mean_gpa?: number | null   // Primary GPA field (no avg_gpa)
           avg_gre?: number | null
           avg_work_exp_years?: number | null
           
@@ -413,15 +412,14 @@ export interface Database {
           // Additional application info
           class_profile?: string | null
           
-          // Legacy fields for compatibility
+          // Legacy fields for compatibility (DEPRECATED - these don't exist in actual DB)
           type?: string | null
           duration?: string | null
-          tuition?: string | null
-          total_cost?: string | null
+          tuition?: string | null           // DEPRECATED: use tuition_total
+          total_cost?: string | null        // DEPRECATED: use tuition_total
           university_id?: string | null
           category?: string | null
           specializations?: string[] | null
-          avg_gmat?: number | null
           avg_work_experience?: string | null
           acceptance_rate?: number | null
           ranking?: number | null
@@ -434,8 +432,7 @@ export interface Database {
           // Primary fields
           id?: string
           number?: number | null
-          business_school?: string | null
-          name?: string | null
+          business_school?: string | null  // Primary name field
           description?: string | null
           location?: string | null
           country?: string | null
@@ -498,15 +495,14 @@ export interface Database {
           // Additional application info
           class_profile?: string | null
           
-          // Legacy fields for compatibility
+          // Legacy fields for compatibility (DEPRECATED)
           type?: string | null
           duration?: string | null
-          tuition?: string | null
-          total_cost?: string | null
+          tuition?: string | null           // DEPRECATED: use tuition_total
+          total_cost?: string | null        // DEPRECATED: use tuition_total
           university_id?: string | null
           category?: string | null
           specializations?: string[] | null
-          avg_gmat?: number | null
           avg_work_experience?: string | null
           acceptance_rate?: number | null
           ranking?: number | null
@@ -519,8 +515,7 @@ export interface Database {
           // Primary fields
           id?: string
           number?: number | null
-          business_school?: string | null
-          name?: string | null
+          business_school?: string | null  // Primary name field
           description?: string | null
           location?: string | null
           country?: string | null
@@ -591,7 +586,6 @@ export interface Database {
           university_id?: string | null
           category?: string | null
           specializations?: string[] | null
-          avg_gmat?: number | null
           avg_work_experience?: string | null
           acceptance_rate?: number | null
           ranking?: number | null
@@ -780,6 +774,126 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+      }
+      user_school_targets: {
+        Row: {
+          id: string
+          user_id: string
+          school_id: string
+          school_type: string
+          target_category: string
+          ranking_preference: string | null
+          program_of_interest: string | null
+          application_round: string | null
+          notes: string | null
+          priority_score: number | null
+          application_status: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          school_id: string
+          school_type?: string
+          target_category: string
+          ranking_preference?: string | null
+          program_of_interest?: string | null
+          application_round?: string | null
+          notes?: string | null
+          priority_score?: number | null
+          application_status?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          school_id?: string
+          school_type?: string
+          target_category?: string
+          ranking_preference?: string | null
+          program_of_interest?: string | null
+          application_round?: string | null
+          notes?: string | null
+          priority_score?: number | null
+          application_status?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_school_targets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_school_targets_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "mba_schools"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_application_progress: {
+        Row: {
+          id: string
+          user_id: string
+          mba_school_id: string
+          application_status: string
+          overall_completion_percentage: number
+          essays_completion_percentage: number
+          lors_completion_percentage: number
+          notes: string | null
+          priority_level: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          mba_school_id: string
+          application_status?: string
+          overall_completion_percentage?: number
+          essays_completion_percentage?: number
+          lors_completion_percentage?: number
+          notes?: string | null
+          priority_level?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          mba_school_id?: string
+          application_status?: string
+          overall_completion_percentage?: number
+          essays_completion_percentage?: number
+          lors_completion_percentage?: number
+          notes?: string | null
+          priority_level?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_application_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_application_progress_mba_school_id_fkey"
+            columns: ["mba_school_id"]
+            isOneToOne: false
+            referencedRelation: "mba_schools"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

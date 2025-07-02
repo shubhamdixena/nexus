@@ -13,23 +13,13 @@ export interface ApplicationProgress {
   user_id: string
   mba_school_id: string
   
-  // Basic application info
-  application_round?: 'R1' | 'R2' | 'R3' | 'R4' | 'R5' | 'Rolling' | null
-  target_deadline?: string | null
+  // Application status
   application_status: ApplicationStatus
   
   // Progress tracking (auto-calculated)
   overall_completion_percentage: number
   essays_completion_percentage: number
   lors_completion_percentage: number
-  documents_completion_percentage: number
-  
-  // Application details
-  application_fee_paid: boolean
-  application_submitted_date?: string | null
-  interview_date?: string | null
-  decision_date?: string | null
-  decision_result?: 'accepted' | 'waitlisted' | 'rejected' | null
   
   // User notes and tracking
   notes?: string | null
@@ -223,19 +213,15 @@ export interface ApplicationDashboardData extends ApplicationProgressWithSchool 
 // Form data interfaces for creating/updating
 export interface CreateApplicationProgressData {
   mba_school_id: string
-  application_round?: 'R1' | 'R2' | 'R3' | 'R4' | 'R5' | 'Rolling'
-  target_deadline?: string
   application_status?: ApplicationStatus
   notes?: string
   priority_level?: number
 }
 
 export interface UpdateApplicationProgressData extends Partial<CreateApplicationProgressData> {
-  application_fee_paid?: boolean
-  application_submitted_date?: string
-  interview_date?: string
-  decision_date?: string
-  decision_result?: 'accepted' | 'waitlisted' | 'rejected'
+  overall_completion_percentage?: number
+  essays_completion_percentage?: number
+  lors_completion_percentage?: number
 }
 
 export interface CreateEssayData {
@@ -310,11 +296,6 @@ export interface LORResponse {
 export interface ApplicationFilters {
   status?: ApplicationStatus[]
   priority_level?: number[]
-  application_round?: ('R1' | 'R2' | 'R3' | 'R4' | 'R5' | 'Rolling')[]
-  deadline_range?: {
-    start?: string
-    end?: string
-  }
 }
 
 export interface EssayFilters {

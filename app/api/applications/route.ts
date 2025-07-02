@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         *,
         universities:university_id (
           id,
-          name,
+          university_name,
           location,
           country
         )
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
         *,
         universities:university_id (
           id,
-          name,
+          university_name,
           location,
           country
         )

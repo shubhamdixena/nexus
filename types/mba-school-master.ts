@@ -4,7 +4,7 @@
  * This is the definitive interface that matches the actual database schema.
  * All other MBASchool interfaces should extend or reference this.
  * 
- * Database contains 88 columns as of latest schema update.
+ * Database contains 42+ columns as of latest schema update.
  */
 
 // Core database row interface (matches actual Supabase schema)
@@ -12,8 +12,7 @@ export interface MBASchoolRow {
   // Primary fields
   id: string
   number?: number | null
-  business_school?: string | null  // Alternative to 'name'
-  name?: string | null
+  business_school?: string | null  // Primary name field (standardized)
   description?: string | null
   location?: string | null
   country?: string | null
@@ -26,15 +25,15 @@ export interface MBASchoolRow {
   international_students?: string | null
   international_students_percentage?: number | null
   
-  // Test scores and academic requirements
-  mean_gmat?: number | null
-  mean_gpa?: number | null
+  // Test scores and academic requirements (standardized field names)
+  mean_gmat?: number | null  // Primary GMAT field
+  mean_gpa?: number | null   // Primary GPA field
   avg_gre?: number | null
   avg_work_exp_years?: number | null
   
   // Financial information
   avg_starting_salary?: string | null
-  tuition_total?: string | null
+  tuition_total?: string | null  // Primary tuition field
   application_fee?: string | null
   weighted_salary_usd?: string | null
   
@@ -66,7 +65,7 @@ export interface MBASchoolRow {
   alumnus_3?: string | null
   alumnus_4?: string | null
   
-  // Program details (from 88-column schema)
+  // Program details (from database schema)
   core_curriculum?: string | null
   program_duration?: string | null
   credits_required?: string | null
@@ -83,10 +82,11 @@ export interface MBASchoolRow {
 
 // Frontend-friendly interface (computed/transformed fields)
 export interface MBASchool extends MBASchoolRow {
-  // Computed/alias fields for backward compatibility
-  avg_gmat?: number | null  // Alias for mean_gmat
-  avg_gpa?: number | null   // Alias for mean_gpa
-  tuition?: string | null   // Alias for tuition_total
+  // Legacy field aliases for backward compatibility (DEPRECATED - will be removed)
+  name?: string | null              // Alias for business_school
+  avg_gmat?: number | null          // Alias for mean_gmat  
+  avg_gpa?: number | null           // Alias for mean_gpa
+  tuition?: string | null           // Alias for tuition_total
   
   // Application deadline aliases
   R1?: string | null        // Alias for r1_deadline
@@ -116,11 +116,11 @@ export interface MBASchool extends MBASchoolRow {
   // Combined ranking (best available)
   ranking?: number | null
   
-  // Legacy field compatibility
-  school_name?: string | null          // Alias for name
-  business_school_name?: string | null // Alias for business_school
-  total_cost?: string | null           // Alias for tuition_total
-  tuition_per_year?: string | null     // Alias for tuition_total
+  // DEPRECATED Legacy field compatibility (use business_school instead)
+  school_name?: string | null          // DEPRECATED: use business_school
+  business_school_name?: string | null // DEPRECATED: use business_school
+  total_cost?: string | null           // DEPRECATED: use tuition_total
+  tuition_per_year?: string | null     // DEPRECATED: use tuition_total
   
   // Additional computed fields
   international_percentage?: number | null  // Alias for international_students_percentage
@@ -191,21 +191,21 @@ export interface MBASchoolListAPIResponse {
   message?: string
 }
 
-// Form/validation types
+// Form/validation types (using standardized field names)
 export interface MBASchoolFormData {
-  name: string
+  business_school: string  // Changed from 'name' to match database
   description?: string
   location?: string
   country?: string
   type?: string
   duration?: string
-  tuition?: string
+  tuition_total?: string   // Changed from 'tuition' to match database
   website?: string
   
-  // Academic requirements
+  // Academic requirements (using standardized field names)
   class_size?: number
-  avg_gmat?: number
-  avg_gpa?: number
+  mean_gmat?: number       // Changed from 'avg_gmat' to match database
+  mean_gpa?: number        // Changed from 'avg_gpa' to match database
   avg_gre?: number
   avg_work_exp_years?: number
   
@@ -222,7 +222,7 @@ export interface MBASchoolFormData {
   
   // Career outcomes
   avg_starting_salary?: string
-  employment_rate?: number
+  employment_rate?: number  // Maps to employment_in_3_months_percent
   top_hiring_companies?: string
   
   // Status
