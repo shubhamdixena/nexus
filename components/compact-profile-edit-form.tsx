@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Loader2, Save, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { EnhancedSchoolSelector } from "@/components/enhanced-school-selector"
@@ -52,20 +53,40 @@ const educationSchema = z.object({
 })
 
 const scoresSchema = z.object({
-  gmat: z.string().optional(),
-  gre: z.string().optional(),
-  toefl: z.string().optional(),
-  ielts: z.string().optional(),
-  gmatDate: z.string().optional(),
+  // GRE Scores
+  greVerbal: z.string().optional(),
+  greQuantitative: z.string().optional(),
+  greAnalyticalWriting: z.string().optional(),
   greDate: z.string().optional(),
+  
+  // GMAT Scores
+  gmatVerbal: z.string().optional(),
+  gmatQuantitative: z.string().optional(),
+  gmatIntegratedReasoning: z.string().optional(),
+  gmatAWA: z.string().optional(),
+  gmatDate: z.string().optional(),
+  
+  // TOEFL Scores
+  toeflReading: z.string().optional(),
+  toeflListening: z.string().optional(),
+  toeflSpeaking: z.string().optional(),
+  toeflWriting: z.string().optional(),
   toeflDate: z.string().optional(),
+  
+  // IELTS (optional)
+  ielts: z.string().optional(),
   ieltsDate: z.string().optional(),
+})
+
+const experienceSchema = z.object({
+  currentRole: z.string().min(1, "Role is required"),
+  currentCompany: z.string().min(1, "Company name is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().optional(),
 })
 
 const goalsSchema = z.object({
   targetDegree: z.string().min(1, "Target degree is required"),
-  careerObjective: z.string().min(10, "Please provide a detailed career objective"),
-  workExperience: z.string().optional(),
   careerLevel: z.string().optional(),
 })
 
@@ -79,9 +100,10 @@ interface CompactProfileEditFormProps {
   section: string
   data: any
   onSave: (data: any) => void
+  onDataChange?: (data: any) => void  // New optional prop for non-closing updates
 }
 
-export function CompactProfileEditForm({ section, data, onSave }: CompactProfileEditFormProps) {
+export function CompactProfileEditForm({ section, data, onSave, onDataChange }: CompactProfileEditFormProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [userId, setUserId] = useState<string>("")
   const { toast } = useToast()
@@ -93,6 +115,8 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
         return personalSchema
       case 'education':
         return educationSchema
+      case 'experience':
+        return experienceSchema
       case 'scores':
         return scoresSchema
       case 'goals':
@@ -104,13 +128,67 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
     }
   }
 
+  // Ensure all form fields have proper default values to prevent controlled/uncontrolled switching
+  const getDefaultValues = () => {
+    const defaultValues: any = {}
+    
+    // Set default values based on section
+    if (section === 'personal') {
+      defaultValues.firstName = data?.firstName || ''
+      defaultValues.lastName = data?.lastName || ''
+      defaultValues.email = data?.email || ''
+      defaultValues.phone = data?.phone || ''
+      defaultValues.dateOfBirth = data?.dateOfBirth || ''
+      defaultValues.nationality = data?.nationality || ''
+      defaultValues.bio = data?.bio || ''
+      defaultValues.linkedinUrl = data?.linkedinUrl || ''
+    } else if (section === 'education') {
+      defaultValues.highestDegree = data?.highestDegree || ''
+      defaultValues.fieldOfStudy = data?.fieldOfStudy || ''
+      defaultValues.university = data?.university || ''
+      defaultValues.graduationYear = data?.graduationYear || ''
+      defaultValues.gpa = data?.gpa || ''
+    } else if (section === 'experience') {
+      defaultValues.currentRole = data?.currentRole || ''
+      defaultValues.currentCompany = data?.currentCompany || ''
+      defaultValues.startDate = data?.startDate || ''
+      defaultValues.endDate = data?.endDate || ''
+    } else if (section === 'scores') {
+      defaultValues.greVerbal = data?.greVerbal || ''
+      defaultValues.greQuantitative = data?.greQuantitative || ''
+      defaultValues.greAnalyticalWriting = data?.greAnalyticalWriting || ''
+      defaultValues.greDate = data?.greDate || ''
+      defaultValues.gmatVerbal = data?.gmatVerbal || ''
+      defaultValues.gmatQuantitative = data?.gmatQuantitative || ''
+      defaultValues.gmatIntegratedReasoning = data?.gmatIntegratedReasoning || ''
+      defaultValues.gmatAWA = data?.gmatAWA || ''
+      defaultValues.gmatDate = data?.gmatDate || ''
+      defaultValues.toeflReading = data?.toeflReading || ''
+      defaultValues.toeflListening = data?.toeflListening || ''
+      defaultValues.toeflSpeaking = data?.toeflSpeaking || ''
+      defaultValues.toeflWriting = data?.toeflWriting || ''
+      defaultValues.toeflDate = data?.toeflDate || ''
+      defaultValues.ielts = data?.ielts || ''
+      defaultValues.ieltsDate = data?.ieltsDate || ''
+    } else if (section === 'goals') {
+      defaultValues.targetDegree = data?.targetDegree || ''
+      defaultValues.careerLevel = data?.careerLevel || ''
+    } else if (section === 'scholarships') {
+      defaultValues.scholarshipInterest = data?.scholarshipInterest || false
+      defaultValues.budgetRange = data?.budgetRange || ''
+      defaultValues.financialAidNeeded = data?.financialAidNeeded || false
+    }
+    
+    return defaultValues
+  }
+
   const form = useForm({
     resolver: zodResolver(getSchema()),
-    defaultValues: data
+    defaultValues: getDefaultValues()
   })
 
   useEffect(() => {
-    form.reset(data)
+    form.reset(getDefaultValues())
     loadUserData()
   }, [data, form])
 
@@ -129,8 +207,10 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
   const onSubmit = async (values: any) => {
     setIsSaving(true)
     try {
-      const response = await fetch('/api/profile', {
-        method: 'POST',
+      console.log('Submitting form values:', { section, values })
+      
+      const response = await fetch('/api/profile/section', {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -140,6 +220,9 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
         })
       })
 
+      const responseData = await response.json()
+      console.log('API Response:', { status: response.status, data: responseData })
+
       if (response.ok) {
         toast({
           title: "Profile updated",
@@ -147,13 +230,31 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
         })
         onSave(values)
       } else {
-        throw new Error('Failed to save profile')
+        console.error('API Error Response:', responseData)
+        throw new Error(responseData.error || responseData.details || 'Failed to save profile')
       }
     } catch (error) {
       console.error('Error saving profile:', error)
+      
+      // More specific error messaging
+      let errorMessage = "Failed to save your changes. Please try again."
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Unauthorized')) {
+          errorMessage = "Please sign in again to save your changes."
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = "Network error. Please check your connection and try again."
+        } else if (error.message.includes('validation')) {
+          errorMessage = "Please check your input and try again."
+        } else {
+          // Show the actual error message for debugging
+          errorMessage = error.message
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to save your changes. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -163,16 +264,39 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
 
   // Special handling for universities section
   if (section === 'universities') {
+    const handleSchoolTargetsChange = (updatedTargets: any[]) => {
+      // The school selector has already saved the data to the database
+      // Use onDataChange for intermediate updates that shouldn't close the dialog
+      if (onDataChange) {
+        onDataChange(updatedTargets)
+      }
+      toast({
+        title: "Schools updated",
+        description: "Your target schools have been saved successfully.",
+      })
+    };
+
     return (
       <div className="space-y-4">
         <EnhancedSchoolSelector
           value={data.schoolTargets || []}
-          onChange={onSave}
+          onChange={handleSchoolTargetsChange}
           userId={userId}
         />
         <p className="text-sm text-muted-foreground mt-2">
-          Changes to your target schools are saved automatically.
+          Changes to your target schools are saved automatically. You can continue making changes and close this dialog when you're done.
         </p>
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button 
+            type="button" 
+            onClick={() => {
+              // Trigger final refresh and close dialog
+              onSave(data.schoolTargets || [])
+            }}
+          >
+            Done
+          </Button>
+        </div>
       </div>
     )
   }
@@ -320,55 +444,105 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
         )}
 
         {section === 'education' && (
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="highestDegree"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Highest Degree</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="highestDegree"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Highest Degree</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Select degree" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
+                        <SelectItem value="master">Master's Degree</SelectItem>
+                        <SelectItem value="phd">PhD</SelectItem>
+                        <SelectItem value="professional">Professional Degree</SelectItem>
+                        <SelectItem value="diploma">Diploma</SelectItem>
+                        <SelectItem value="certificate">Certificate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="fieldOfStudy"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Field of Study</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select degree" />
-                      </SelectTrigger>
+                      <Input placeholder="Computer Science" className="h-9" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
-                      <SelectItem value="master">Master's Degree</SelectItem>
-                      <SelectItem value="phd">PhD</SelectItem>
-                      <SelectItem value="professional">Professional Degree</SelectItem>
-                      <SelectItem value="diploma">Diploma</SelectItem>
-                      <SelectItem value="certificate">Certificate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="fieldOfStudy"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Field of Study</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Computer Science" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             
             <FormField
               control={form.control}
               name="university"
               render={({ field }) => (
-                <FormItem className="col-span-2">
+                <FormItem>
                   <FormLabel>University</FormLabel>
                   <FormControl>
-                    <Input placeholder="Harvard University" {...field} />
+                    <Input placeholder="Harvard University" className="h-9" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="graduationYear"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Graduation Year</FormLabel>
+                    <FormControl>
+                      <Input placeholder="2024" className="h-9" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="gpa"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>GPA</FormLabel>
+                    <FormControl>
+                      <Input placeholder="3.8" className="h-9" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        )}
+
+        {section === 'experience' && (
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="currentRole"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Job Title / Role</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Software Engineer, Marketing Manager" className="h-9" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -377,147 +551,309 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
             
             <FormField
               control={form.control}
-              name="graduationYear"
+              name="currentCompany"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Graduation Year</FormLabel>
+                  <FormLabel>Company / Organization</FormLabel>
                   <FormControl>
-                    <Input placeholder="2024" {...field} />
+                    <Input placeholder="e.g. Google, Microsoft, Acme Corp" className="h-9" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="gpa"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>GPA</FormLabel>
-                  <FormControl>
-                    <Input placeholder="3.8" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <DatePicker 
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select start date"
+                        className="h-9"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <DatePicker 
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select end date (optional)"
+                        className="h-9"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
         )}
 
         {section === 'scores' && (
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="gmat"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>GMAT Score</FormLabel>
-                  <FormControl>
-                    <Input placeholder="720" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="gmatDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>GMAT Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="gre"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>GRE Score</FormLabel>
-                  <FormControl>
-                    <Input placeholder="325" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="greDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>GRE Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="toefl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>TOEFL Score</FormLabel>
-                  <FormControl>
-                    <Input placeholder="110" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="toeflDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>TOEFL Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="ielts"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>IELTS Score</FormLabel>
-                  <FormControl>
-                    <Input placeholder="8.5" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="ieltsDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>IELTS Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            {/* GRE Section */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-800 text-sm">GRE Scores</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <FormField
+                  control={form.control}
+                  name="greVerbal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Verbal</FormLabel>
+                      <FormControl>
+                        <Input placeholder="161" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="greQuantitative"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Quantitative</FormLabel>
+                      <FormControl>
+                        <Input placeholder="167" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="greAnalyticalWriting"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Analytical Writing</FormLabel>
+                      <FormControl>
+                        <Input placeholder="4.5" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="greDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">GRE Test Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" className="h-8" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* GMAT Section */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-800 text-sm">GMAT Scores</h4>
+              <div className="grid grid-cols-4 gap-3">
+                <FormField
+                  control={form.control}
+                  name="gmatVerbal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Verbal</FormLabel>
+                      <FormControl>
+                        <Input placeholder="40" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="gmatQuantitative"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Quantitative</FormLabel>
+                      <FormControl>
+                        <Input placeholder="49" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="gmatIntegratedReasoning"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Integrated Reasoning</FormLabel>
+                      <FormControl>
+                        <Input placeholder="8" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="gmatAWA"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">AWA</FormLabel>
+                      <FormControl>
+                        <Input placeholder="5.0" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="gmatDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">GMAT Test Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" className="h-8" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* TOEFL Section */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-800 text-sm">TOEFL Scores</h4>
+              <div className="grid grid-cols-4 gap-3">
+                <FormField
+                  control={form.control}
+                  name="toeflReading"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Reading</FormLabel>
+                      <FormControl>
+                        <Input placeholder="28" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="toeflListening"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Listening</FormLabel>
+                      <FormControl>
+                        <Input placeholder="29" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="toeflSpeaking"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Speaking</FormLabel>
+                      <FormControl>
+                        <Input placeholder="27" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="toeflWriting"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Writing</FormLabel>
+                      <FormControl>
+                        <Input placeholder="26" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="toeflDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">TOEFL Test Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" className="h-8" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* IELTS Section (Optional) */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-800 text-sm">IELTS Score (Optional)</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="ielts"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Overall Band Score</FormLabel>
+                      <FormControl>
+                        <Input placeholder="7.5" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="ieltsDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">IELTS Test Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" className="h-8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -531,7 +867,7 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
                   <FormLabel>Target Degree</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-9">
                         <SelectValue placeholder="Select target degree" />
                       </SelectTrigger>
                     </FormControl>
@@ -557,7 +893,7 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
                   <FormLabel>Career Level</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-9">
                         <SelectValue placeholder="Select career level" />
                       </SelectTrigger>
                     </FormControl>
@@ -568,45 +904,6 @@ export function CompactProfileEditForm({ section, data, onSave }: CompactProfile
                       <SelectItem value="executive">Executive (15+ years)</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="careerObjective"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Career Objective</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Describe your career goals and aspirations..."
-                      className="min-h-[120px]"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Detailed description of your career goals and what you hope to achieve
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="workExperience"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Work Experience Summary</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Briefly describe your work experience..."
-                      className="min-h-[100px]"
-                      {...field} 
-                    />
-                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

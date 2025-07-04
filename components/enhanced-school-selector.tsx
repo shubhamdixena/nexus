@@ -77,9 +77,36 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
   const [applicationRound, setApplicationRound] = useState<string>("")
   const [priorityScore, setPriorityScore] = useState<number>(5)
   const [savingTarget, setSavingTarget] = useState(false)
+  const [localTargets, setLocalTargets] = useState<SchoolTarget[]>(value || [])
   const { toast } = useToast()
 
   const supabase = createClient()
+
+  // Sync local targets with incoming value prop
+  useEffect(() => {
+    setLocalTargets(value || [])
+  }, [value])
+
+  // Load current user's school targets if value is empty but userId is available
+  useEffect(() => {
+    if (userId && (!value || value.length === 0)) {
+      loadUserSchoolTargets()
+    }
+  }, [userId, value])
+
+  const loadUserSchoolTargets = async () => {
+    try {
+      const response = await fetch('/api/school-targets')
+      if (response.ok) {
+        const data = await response.json()
+        const targets = data.targets || []
+        setLocalTargets(targets)
+        onChange(targets) // Update parent component
+      }
+    } catch (error) {
+      console.error('Error loading user school targets:', error)
+    }
+  }
 
   // Load schools from database
   useEffect(() => {
@@ -135,9 +162,9 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
   // Filter schools to exclude already selected ones
   const availableSchools = useMemo(() => {
     return schools.filter(school => 
-      !value.some(target => target.school_id === school.id)
+      !localTargets.some(target => target.school_id === school.id)
     )
-  }, [schools, value])
+  }, [schools, localTargets])
 
   const handleSchoolSelect = (school: MBASchool) => {
     setSelectedSchool(school)
@@ -170,7 +197,10 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
         const responseData = await response.json()
         
         if (responseData.target) {
-          onChange([...value, responseData.target])
+          // Update the local and parent state immediately to reflect changes
+          const updatedTargets = [...localTargets, responseData.target]
+          setLocalTargets(updatedTargets)
+          onChange(updatedTargets)
           
           toast({
             title: "School added! 🎉",
@@ -215,7 +245,7 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
   }
 
   const removeSchoolTarget = async (schoolId: string) => {
-    const targetToRemove = value.find(target => target.school_id === schoolId)
+    const targetToRemove = localTargets.find(target => target.school_id === schoolId)
     
     if (targetToRemove?.id) {
       try {
@@ -224,7 +254,9 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
         })
 
         if (response.ok) {
-          onChange(value.filter(target => target.school_id !== schoolId))
+          const updatedTargets = localTargets.filter(target => target.school_id !== schoolId)
+          setLocalTargets(updatedTargets)
+          onChange(updatedTargets)
           
           toast({
             title: "School removed",
@@ -251,14 +283,16 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
   }
 
   const updateSchoolTarget = async (schoolId: string, updates: Partial<SchoolTarget>) => {
-    const targetToUpdate = value.find(target => target.school_id === schoolId)
+    const targetToUpdate = localTargets.find(target => target.school_id === schoolId)
     
     // Update local state immediately
-    onChange(value.map(target => 
+    const updatedTargets = localTargets.map(target => 
       target.school_id === schoolId 
         ? { ...target, ...updates }
         : target
-    ))
+    )
+    setLocalTargets(updatedTargets)
+    onChange(updatedTargets)
 
     // Save to database if target has an ID
     if (targetToUpdate?.id) {
@@ -310,12 +344,12 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
           Your Target Schools
         </h3>
         <Badge variant="outline">
-          {value.length} school{value.length !== 1 ? 's' : ''} selected
+          {localTargets.length} school{localTargets.length !== 1 ? 's' : ''} selected
         </Badge>
       </div>
 
       {/* Current Target Schools */}
-      {value.length === 0 ? (
+      {localTargets.length === 0 ? (
         <Card className="p-8 text-center bg-gray-50 dark:bg-gray-900 border-2 border-dashed">
           <School className="h-12 w-12 mx-auto mb-4 text-gray-400" />
           <h4 className="font-semibold mb-2">No schools selected yet</h4>
@@ -334,7 +368,7 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
         <div className="space-y-4">
           {/* School Capsules with Edit Icons */}
           <div className="flex flex-wrap gap-3">
-            {value.map((target) => (
+            {localTargets.map((target) => (
               <div 
                 key={target.school_id}
                 className="flex items-center gap-2 bg-primary/10 text-primary px-4 py-3 rounded-full border border-primary/20 hover:bg-primary/15 transition-colors"
@@ -458,7 +492,7 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {selectedSchool?.id && value.find(t => t.school_id === selectedSchool.id) 
+              {selectedSchool?.id && localTargets.find(t => t.school_id === selectedSchool.id) 
                 ? "Edit Target School" 
                 : "Add Target School"
               }
@@ -536,7 +570,7 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
                 <Button
                   onClick={() => {
                     // Check if this is an edit operation
-                    const isEdit = selectedSchool?.id && value.find(t => t.school_id === selectedSchool.id)
+                    const isEdit = selectedSchool?.id && localTargets.find(t => t.school_id === selectedSchool.id)
                     
                     if (isEdit) {
                       // Update existing school
@@ -565,12 +599,12 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
                   {savingTarget ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {value.find(t => t.school_id === selectedSchool?.id) ? 'Updating...' : 'Adding...'}
+                      {localTargets.find(t => t.school_id === selectedSchool?.id) ? 'Updating...' : 'Adding...'}
                     </>
                   ) : (
                     <>
                       <Check className="h-4 w-4 mr-2" />
-                      {value.find(t => t.school_id === selectedSchool?.id) ? 'Update School' : 'Add School'}
+                      {localTargets.find(t => t.school_id === selectedSchool?.id) ? 'Update School' : 'Add School'}
                     </>
                   )}
                 </Button>

@@ -95,6 +95,10 @@ export function ProfileView() {
   const { toast } = useToast()
 
   useEffect(() => {
+    console.log('ProfileView schoolTargets state updated:', schoolTargets) // Debug log
+  }, [schoolTargets])
+
+  useEffect(() => {
     if (user?.id) {
       loadProfileData()
       loadSchoolTargets()
@@ -156,7 +160,10 @@ export function ProfileView() {
       const response = await fetch('/api/school-targets')
       if (response.ok) {
         const data = await response.json()
+        console.log('Loaded school targets:', data.targets) // Debug log
         setSchoolTargets(data.targets || [])
+      } else {
+        console.error('Failed to load school targets:', response.status)
       }
     } catch (error) {
       console.error('Error loading school targets:', error)
@@ -663,9 +670,16 @@ export function ProfileView() {
                 </DialogHeader>
                 <CompactProfileEditForm 
                   section="universities" 
-                  data={{ schoolTargets }}
+                  data={{ schoolTargets: schoolTargets }}
+                  onDataChange={(data) => {
+                    // Update local state without refreshing from server
+                    // This prevents the dialog from closing on every change
+                    setSchoolTargets(data || [])
+                  }}
                   onSave={(data) => {
-                    loadSchoolTargets() // Refresh school targets
+                    // Final refresh when dialog is closed
+                    loadSchoolTargets()
+                    setSchoolTargets(data || [])
                   }}
                 />
               </DialogContent>
@@ -720,8 +734,14 @@ export function ProfileView() {
                     <CompactProfileEditForm 
                       section="universities" 
                       data={{ schoolTargets: [] }}
+                      onDataChange={(data) => {
+                        // Update local state without refreshing from server
+                        setSchoolTargets(data || [])
+                      }}
                       onSave={(data) => {
+                        // Final refresh when dialog is closed
                         loadSchoolTargets()
+                        setSchoolTargets(data || [])
                       }}
                     />
                   </DialogContent>

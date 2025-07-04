@@ -30,14 +30,31 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    // Get existing profile data for sections that need it
+    let existingProfile = null
+    if (section === 'experience') {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('test_scores')
+        .eq('id', user.id)
+        .single()
+      existingProfile = profile
+    }
+
     // Map form data to database columns based on section
-    const mappedData = mapSectionDataToDatabase(section, data)
+    const mappedData = mapSectionDataToDatabase(section, data, existingProfile)
 
     // Update the profile section
     const { data: profile, error } = await supabase
       .from('profiles')
-      .update(mappedData)
-      .eq('id', user.id)
+      .upsert({
+        id: user.id,
+        email: user.email,
+        ...mappedData,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      })
       .select()
       .single()
 
@@ -50,30 +67,32 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Calculate completion percentage
-    const completionPercentage = calculateProfileCompletion(profile)
-    const isComplete = completionPercentage >= 80
+    const completionData = calculateProfileCompletion(profile)
+    const isComplete = completionData.percentage >= 80
 
-    // Update completion status
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        profile_completion_percentage: completionPercentage,
-        profile_completed: isComplete
-      })
-      .eq('id', user.id)
+    // Update completion status if needed
+    if (profile.profile_completion_percentage !== completionData.percentage) {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          profile_completion_percentage: completionData.percentage,
+          profile_completed: isComplete
+        })
+        .eq('id', user.id)
 
-    if (updateError) {
-      console.error('Completion update error:', updateError)
+      if (updateError) {
+        console.error('Completion update error:', updateError)
+      }
     }
 
     return NextResponse.json({
       success: true,
       profile: {
         ...profile,
-        profile_completion_percentage: completionPercentage,
+        profile_completion_percentage: completionData.percentage,
         profile_completed: isComplete
       },
-      missing_sections: getMissingSections(profile)
+      completion: completionData
     })
 
   } catch (error) {
@@ -85,7 +104,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-function mapSectionDataToDatabase(section: string, data: any) {
+function mapSectionDataToDatabase(section: string, data: any, existingProfile?: any) {
   switch (section) {
     case 'personal':
       return {
@@ -107,29 +126,61 @@ function mapSectionDataToDatabase(section: string, data: any) {
         gpa: data.gpa ? parseFloat(data.gpa) : null,
       }
     
+    case 'experience':
+      return {
+        // Store work experience in test_scores JSONB field
+        test_scores: {
+          ...(existingProfile?.test_scores || {}),
+          work_experience: {
+            role: data.currentRole,
+            company: data.currentCompany,
+            start_date: data.startDate || null,
+            end_date: data.endDate || null,
+          }
+        }
+      }
+    
     case 'scores':
       return {
         test_scores: {
-          gmat: data.gmat || null,
-          gre: data.gre || null,
-          toefl: data.toefl || null,
+          // GRE scores
+          gre_verbal: data.greVerbal || null,
+          gre_quantitative: data.greQuantitative || null,
+          gre_analytical_writing: data.greAnalyticalWriting || null,
+          gre_date: data.greDate || null,
+          
+          // GMAT scores
+          gmat_verbal: data.gmatVerbal || null,
+          gmat_quantitative: data.gmatQuantitative || null,
+          gmat_integrated_reasoning: data.gmatIntegratedReasoning || null,
+          gmat_awa: data.gmatAWA || null,
+          gmat_date: data.gmatDate || null,
+          
+          // TOEFL scores
+          toefl_reading: data.toeflReading || null,
+          toefl_listening: data.toeflListening || null,
+          toefl_speaking: data.toeflSpeaking || null,
+          toefl_writing: data.toeflWriting || null,
+          toefl_date: data.toeflDate || null,
+          
+          // IELTS scores
           ielts: data.ielts || null,
-          gmatDate: data.gmatDate || null,
-          greDate: data.greDate || null,
-          toeflDate: data.toeflDate || null,
-          ieltsDate: data.ieltsDate || null,
+          ielts_date: data.ieltsDate || null,
         }
       }
     
     case 'goals':
       return {
         target_degree: data.targetDegree,
-        target_programs: data.targetPrograms || [],
-        career_objective: data.careerObjective,
-        work_experience_category: data.workExperience,
-        preferred_countries: data.preferredCountries || [],
-        industry_interests: data.industryInterests || [],
         career_level: data.careerLevel || null,
+        career_objective: data.careerObjective || null,
+      }
+    
+    case 'scholarships':
+      return {
+        scholarship_interest: data.scholarshipInterest || false,
+        budget_range: data.budgetRange || null,
+        financial_aid_needed: data.financialAidNeeded || false,
       }
     
     case 'preferences':
@@ -144,36 +195,86 @@ function mapSectionDataToDatabase(section: string, data: any) {
       }
     
     default:
-      return data
+      return {}
   }
 }
 
 function calculateProfileCompletion(profile: any) {
+  if (!profile) {
+    return {
+      percentage: 0,
+      completed_fields: 0,
+      total_fields: 0,
+      missing_sections: ["personal", "education", "goals", "preferences"]
+    }
+  }
+
   const fields = [
-    'first_name', 'last_name', 'phone', 'date_of_birth', 'nationality',
-    'highest_degree', 'field_of_study', 'university', 'graduation_year',
-    'target_degree', 'career_objective', 'preferred_countries'
+    // Personal information (30%)
+    profile.first_name,
+    profile.last_name,
+    profile.nationality,
+    
+    // Education (25%)
+    profile.highest_degree,
+    profile.field_of_study,
+    profile.university,
+    profile.graduation_year,
+    
+    // Career goals (25%)
+    profile.target_degree,
+    profile.target_programs?.length > 0,
+    profile.career_objective,
+    profile.work_experience_category,
+    profile.preferred_countries?.length > 0,
+    
+    // Preferences (20%)
+    profile.budget_range,
+    profile.start_date,
+    profile.accommodation_preference,
+    profile.communication_preferences?.length > 0,
   ]
-  
-  const completed = fields.filter(field => profile[field] && profile[field] !== '').length
-  return Math.round((completed / fields.length) * 100)
+
+  const completedFields = fields.filter(field => {
+    if (typeof field === 'boolean') return field
+    if (Array.isArray(field)) return field.length > 0
+    return field && field.toString().trim() !== ''
+  }).length
+
+  const percentage = Math.round((completedFields / fields.length) * 100)
+
+  return {
+    percentage,
+    completed_fields: completedFields,
+    total_fields: fields.length,
+    missing_sections: getMissingSections(profile)
+  }
 }
 
 function getMissingSections(profile: any) {
-  const sections = []
-  
-  if (!profile.first_name || !profile.last_name) {
-    sections.push('Personal Information')
+  const missing = []
+
+  // Check personal info
+  if (!profile.first_name || !profile.last_name || !profile.nationality) {
+    missing.push("personal")
   }
-  if (!profile.highest_degree || !profile.field_of_study) {
-    sections.push('Educational Background')
+
+  // Check education
+  if (!profile.highest_degree || !profile.field_of_study || !profile.university || !profile.graduation_year) {
+    missing.push("education")
   }
-  if (!profile.target_degree || !profile.career_objective) {
-    sections.push('Academic Goals')
+
+  // Check career goals
+  if (!profile.target_degree || !profile.target_programs?.length || !profile.career_objective || 
+      !profile.work_experience_category || !profile.preferred_countries?.length) {
+    missing.push("goals")
   }
-  if (!profile.preferred_countries || profile.preferred_countries.length === 0) {
-    sections.push('Program Preferences')
+
+  // Check preferences
+  if (!profile.budget_range || !profile.start_date || !profile.accommodation_preference || 
+      !profile.communication_preferences?.length) {
+    missing.push("preferences")
   }
-  
-  return sections
+
+  return missing
 }
