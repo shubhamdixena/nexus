@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.2.1",
+    "@google-cloud/aiplatform": "^4.3.0",
     "@hookform/resolvers": "^3.3.2",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.4",
@@ -60,6 +61,7 @@
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.5.1",
     "framer-motion": "^11.11.17",
+    "google-auth-library": "^10.1.0",
     "input-otp": "^1.4.1",
     "isomorphic-dompurify": "^2.16.0",
     "lucide-react": "^0.454.0",

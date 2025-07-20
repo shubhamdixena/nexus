@@ -49,6 +49,14 @@ export function createSupabaseServerClientForAPI(request: NextRequest) {
         get(name: string) {
           return request.cookies.get(name)?.value
         },
+        set(name: string, value: string, options: any) {
+          // For API routes, we can't set cookies in the response
+          // This is handled by the client-side session management
+        },
+        remove(name: string, options: any) {
+          // For API routes, we can't remove cookies in the response
+          // This is handled by the client-side session management
+        },
       },
     }
   )

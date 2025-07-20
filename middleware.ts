@@ -151,10 +151,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // If user is authenticated and visiting the root, redirect to dashboard
+    // If user is authenticated and visiting the root, redirect to applications page  
     if (pathname === '/' && user) {
-      // User is authenticated, let them access the dashboard
-      return response
+      return NextResponse.redirect(new URL("/applications", request.url))
     }
 
     // Verify user email is confirmed

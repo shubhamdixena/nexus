@@ -36,9 +36,9 @@ function AuthCallbackContent() {
           const isComplete = profile?.profile_completed || (profile?.profile_completion_percentage || 0) >= 80
 
           if (!isComplete) {
-            router.push('/profile-setup?required=true')
+            router.push('/profile?required=true')
           } else {
-            router.push('/')
+            router.push('/applications')
           }
         } else {
           router.push('/auth/login')

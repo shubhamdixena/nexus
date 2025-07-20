@@ -15,11 +15,13 @@ const AdminSchoolsManagement = lazy(() => import("./admin-schools-management").t
 const AdminMbaSchoolsManagement = lazy(() => import("./admin-mba-schools-management").then(m => ({ default: m.AdminMbaSchoolsManagement })))
 const AdminScholarshipsManagement = lazy(() => import("./admin-scholarships-management").then(m => ({ default: m.AdminScholarshipsManagement })))
 const AdminSystemSettings = lazy(() => import("./admin-system-settings").then(m => ({ default: m.AdminSystemSettings })))
+const AdminAIInterviewManagement = lazy(() => import("./admin-ai-interview-management").then(m => ({ default: m.AdminAIInterviewManagement })))
 
 const AdminSopManagement = lazy(() => import("./admin-sop-management").then(m => ({ default: m.AdminSopManagement })))
 const AdminAdvancedUserManagement = lazy(() => import("./admin-advanced-user-management").then(m => ({ default: m.AdminAdvancedUserManagement })))
 const AdminDataCorrections = lazy(() => import("./admin-data-corrections").then(m => ({ default: m.AdminDataCorrections })))
 const AdminAnalyticsDashboard = lazy(() => import("./admin-analytics-dashboard"))
+
 
 // Memoized loading component
 const ComponentLoader = React.memo(() => (
@@ -147,13 +149,14 @@ const AdminPanel = React.memo(() => {
       permission: 'admin.settings.manage'
     },
     {
-      id: "ai-interview-settings",
-      title: "AI Interview Settings",
+      id: "ai-interviews",
+      title: "AI Interview Management",
       icon: Brain,
-      description: "Configure AI providers and interview parameters",
-      component: React.lazy(() => import("./admin-ai-interview-settings")),
-      permission: 'admin.settings.manage'
-    }
+      description: "Manage AI-generated interview questions and feedback",
+      component: AdminAIInterviewManagement,
+      permission: 'admin.ai.manage'
+    },
+
   ], [])
 
   // Filter available tabs based on permissions

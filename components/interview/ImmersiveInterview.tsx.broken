@@ -1,0 +1,796 @@
+"use client"
+
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Wifi, WifiOff, Building2, Clock, AlertTriangle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
+import WaveAnimation from './WaveAnimation'
+import PulseIndicator from './PulseIndicator'
+
+interface ImmersiveInterviewProps {
+  schoolId: string
+  schoolName: string
+  onExit: () => void
+}
+
+interface InterviewSession {
+  id: string
+  status: 'starting' | 'active' | 'completed' | 'interrupted'
+  transcript: TranscriptEntry[]
+  startTime: Date
+  endTime?: Date
+}
+
+interface TranscriptEntry {
+  id: string
+  speaker: 'user' | 'interviewer'
+  text: string
+  timestamp: Date
+  confidence?: number
+}
+
+type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error'
+type InterviewState = 'listening' | 'speaking' | 'thinking' | 'idle'
+
+export default function ImmersiveInterview({ schoolId, schoolName, onExit }: ImmersiveInterviewProps) {
+  const [connectionState, setConnectionState] = useState<ConnectionState>('connecting')
+  const [interviewState, setInterviewState] = useState<InterviewState>('idle')
+  const [audioLevel, setAudioLevel] = useState(0)
+  const [session, setSession] = useState<InterviewSession | null>(null)
+  const [isResuming, setIsResuming] = useState(false)
+  const [canResume, setCanResume] = useState(false)
+  const [startTime] = useState(new Date())
+  const [testMode, setTestMode] = useState(false)
+  const [testStatus, setTestStatus] = useState<string>('Ready to test')
+  
+  const { toast } = useToast()
+  const router = useRouter()
+  const wsRef = useRef<WebSocket | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
+  const sessionIdRef = useRef<string>()
+
+  // Simple test function
+  const runConnectionTest = async () => {
+    setTestMode(true)
+    setTestStatus('Testing local agent connection...')
+    
+    try {
+      // Test 1: HTTP health check
+      setTestStatus('Step 1: Testing HTTP health endpoint...')
+      const response = await fetch('http://localhost:8000/health')
+      if (response.ok) {
+        setTestStatus('✅ HTTP health check passed')
+      } else {
+        setTestStatus('❌ HTTP health check failed')
+        return
+      }
+      
+      // Test 2: WebSocket connection
+      setTestStatus('Step 2: Testing WebSocket connection...')
+      const wsUrl = process.env.NEXT_PUBLIC_AGENT_WS_URL || 'wss://mba-interview-agent-ve23ao6huq-uc.a.run.app/ws'
+      const ws = new WebSocket(wsUrl)
+      
+      ws.onopen = () => {
+        setTestStatus('✅ WebSocket connection established')
+        ws.close()
+        setConnectionState('connected')
+        setInterviewState('listening')
+      }
+      
+      ws.onerror = (error) => {
+        setTestStatus('❌ WebSocket connection failed')
+        console.error('WebSocket test error:', error)
+      }
+      
+      ws.onclose = (event) => {
+        if (event.code === 1000) {
+          setTestStatus('✅ Test completed successfully')
+        } else {
+          setTestStatus(`❌ WebSocket closed with code: ${event.code}`)
+        }
+      }
+      
+    } catch (error) {
+      setTestStatus(`❌ Test failed: ${error}`)
+      console.error('Connection test error:', error)
+    }
+  }
+
+  // Initialize session
+  useEffect(() => {
+    const initializeSession = async () => {
+      try {
+        console.log('Initializing session for school:', schoolId)
+        
+        // Check for existing incomplete session
+        const existingSession = localStorage.getItem(`interview_session_${schoolId}`)
+        if (existingSession) {
+          const parsedSession = JSON.parse(existingSession)
+          if (parsedSession.status === 'active' && 
+              new Date().getTime() - new Date(parsedSession.startTime).getTime() < 24 * 60 * 60 * 1000) { // 24 hours
+            console.log('Found existing session:', parsedSession.id)
+            setCanResume(true)
+            setSession(parsedSession)
+            return
+          }
+        }
+
+        // Create new session - start with local session only
+        const newSession: InterviewSession = {
+          id: `session_${Date.now()}`,
+          status: 'starting',
+          transcript: [],
+          startTime: new Date()
+        }
+        
+        console.log('Creating new session:', newSession.id)
+        setSession(newSession)
+        sessionIdRef.current = newSession.id
+        localStorage.setItem(`interview_session_${schoolId}`, JSON.stringify(newSession))
+        
+        console.log('Session initialized successfully (local only)')
+        
+      } catch (error) {
+        console.error('Failed to initialize session:', error)
+        // Create a minimal session even if there are errors
+        const fallbackSession: InterviewSession = {
+          id: `fallback_${Date.now()}`,
+          status: 'starting',
+          transcript: [],
+          startTime: new Date()
+        }
+        setSession(fallbackSession)
+        sessionIdRef.current = fallbackSession.id
+        
+        toast({
+          title: "Session Warning",
+          description: "Session created locally. Some features may be limited.",
+          variant: "default"
+        })
+      }
+    }
+
+    if (schoolId) {
+      initializeSession()
+    }
+  }, [schoolId, toast])
+
+  // Audio setup and monitoring
+  const setupAudioMonitoring = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100
+        }
+      })
+
+      streamRef.current = stream
+      audioContextRef.current = new AudioContext()
+      analyserRef.current = audioContextRef.current.createAnalyser()
+      
+      const source = audioContextRef.current.createMediaStreamSource(stream)
+      source.connect(analyserRef.current)
+      
+      analyserRef.current.fftSize = 256
+      const bufferLength = analyserRef.current.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+
+      const updateAudioLevel = () => {
+        if (analyserRef.current && interviewState === 'listening') {
+          analyserRef.current.getByteFrequencyData(dataArray)
+          const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength
+          setAudioLevel(Math.min((average / 128) * 100, 100))
+        } else {
+          setAudioLevel(0)
+        }
+        requestAnimationFrame(updateAudioLevel)
+      }
+      
+      updateAudioLevel()
+      
+    } catch (error) {
+      console.error('Audio setup failed:', error)
+      setConnectionState('error')
+    }
+  }, [interviewState])
+
+  // Demo mode simulation when agent is not available
+  const startDemoMode = useCallback(() => {
+    console.log('Starting demo mode...')
+    setConnectionState('connected')
+    setInterviewState('listening')
+    
+    // Simulate interview flow
+    const demoFlow = async () => {
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      setInterviewState('thinking')
+      
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      setInterviewState('speaking')
+      
+      // Add a demo transcript entry
+      addToTranscript('interviewer', 'Hello! This is a demo interview. The real AI agent is not currently available, but you can experience the interface. Tell me about yourself.', 95)
+      
+      await new Promise(resolve => setTimeout(resolve, 4000))
+      setInterviewState('listening')
+    }
+    
+    demoFlow()
+  }, [])
+
+  // WebSocket connection
+  const connectToAgent = useCallback(async () => {
+    if (!session) {
+      console.error('Cannot connect: No session available')
+      return
+    }
+
+    try {
+      setConnectionState('connecting')
+      
+      // Try cloud URL first (your deployed service)
+      const cloudUrl = process.env.NEXT_PUBLIC_AGENT_WS_URL || 'wss://mba-interview-agent-ve23ao6huq-uc.a.run.app/ws'
+      const localUrl = process.env.NEXT_PUBLIC_LOCAL_WS_URL || 'ws://localhost:8000/ws'
+      
+      console.log('Environment variables:', {
+        cloudUrl: process.env.NEXT_PUBLIC_AGENT_WS_URL,
+        localUrl: process.env.NEXT_PUBLIC_LOCAL_WS_URL
+      })
+      
+      let wsUrl = cloudUrl
+      let isCloud = true
+      
+      console.log('Attempting to connect to cloud agent:', cloudUrl)
+      
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+
+      // Add connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState === WebSocket.CONNECTING) {
+          console.log('Connection timeout to:', wsUrl)
+          ws.close()
+          if (isCloud) {
+            console.log('Cloud connection failed, trying local...')
+            // Try local connection
+            setTimeout(() => {
+              const newWs = new WebSocket(localUrl)
+              wsRef.current = newWs
+              setupWebSocketHandlers(newWs, localUrl, false)
+            }, 100)
+          } else {
+            console.log('All connection attempts failed')
+            setConnectionState('error')
+          }
+        }
+      }, 10000) // 10 second timeout
+      
+      setupWebSocketHandlers(ws, wsUrl, isCloud)
+      
+    } catch (error) {
+      console.error('Connection setup failed:', error)
+      setConnectionState('error')
+    }
+  }, [session])
+
+  const setupWebSocketHandlers = (ws: WebSocket, url: string, isCloudConnection: boolean) => {
+
+      ws.onopen = () => {
+        console.log('WebSocket connected successfully to:', wsUrl)
+        clearTimeout(connectionTimeout)
+        setConnectionState('connected')
+        
+        // Send setup message for Gemini Live API
+        const setupMessage = {
+          setup: {
+            run_id: `interview_${Date.now()}`,
+            user_id: 'current_user',
+            context: {
+              school_name: schoolName,
+              school_id: schoolId,
+              interview_type: 'mba_admission',
+              session_id: session.id
+            }
+          }
+        }
+        
+        console.log('Sending setup message:', setupMessage)
+        ws.send(JSON.stringify(setupMessage))
+        
+        // Update session status
+        const activeSession = { ...session, status: 'active' as const }
+        setSession(activeSession)
+        sessionIdRef.current = activeSession.id
+        localStorage.setItem(`interview_session_${schoolId}`, JSON.stringify(activeSession))
+        
+        // Start audio monitoring
+        setupAudioMonitoring().catch(error => {
+          console.warn('Audio monitoring setup failed:', error)
+          toast({
+            title: "Audio Warning",
+            description: "Could not access microphone. Interview will continue with limited functionality.",
+            variant: "default"
+          })
+        })
+        
+        // Start demo interview flow
+        setInterviewState('listening')
+      }
+              schoolId,
+              sessionId: session.id,
+              resuming: isResuming
+            }
+          }
+        }
+        console.log('Sending setup message:', setupMessage)
+        ws.send(JSON.stringify(setupMessage))
+        
+        // Start listening after setup
+        setTimeout(() => {
+          setInterviewState('listening')
+        }, 1000)
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          console.log('Received WebSocket message:', data)
+          handleWebSocketMessage(data)
+        } catch (error) {
+          console.error('Failed to parse WebSocket message:', error)
+        }
+      }
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error)
+        clearTimeout(connectionTimeout)
+        if (isCloud) {
+          console.log('Cloud WebSocket error, trying local...')
+          // Try local connection
+          setTimeout(() => {
+            wsUrl = localUrl
+            isCloud = false
+            connectToAgent()
+          }, 100)
+        } else {
+          setConnectionState('error')
+          setInterviewState('idle')
+        }
+      }
+
+      ws.onclose = (event) => {
+        console.log('WebSocket closed:', event.code, event.reason)
+        clearTimeout(connectionTimeout)
+        setConnectionState('disconnected')
+        setInterviewState('idle')
+        
+        // Auto-reconnect unless interview completed
+        if (session?.status === 'active') {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('Attempting reconnection...')
+            connectToAgent()
+          }, 3000)
+        }
+      }
+
+    } catch (error) {
+      console.error('WebSocket connection failed:', error)
+      setConnectionState('error')
+    }
+  }, [session, schoolId, isResuming])
+
+  // Handle WebSocket messages
+  const handleWebSocketMessage = (data: any) => {
+    switch (data.type) {
+      case 'interviewer_speaking':
+        setInterviewState('speaking')
+        break
+        
+      case 'interviewer_finished':
+        setInterviewState('listening')
+        break
+        
+      case 'thinking':
+        setInterviewState('thinking')
+        break
+        
+      case 'transcript':
+        addToTranscript(data.speaker, data.text, data.confidence)
+        break
+        
+      case 'interview_complete':
+        handleInterviewComplete()
+        break
+        
+      case 'error':
+        console.error('Interview error:', data.message)
+        toast({
+          title: "Interview Error",
+          description: data.message,
+          variant: "destructive"
+        })
+        break
+    }
+  }
+
+  // Add transcript entry
+  const addToTranscript = (speaker: 'user' | 'interviewer', text: string, confidence?: number) => {
+    if (!session) return
+
+    const entry: TranscriptEntry = {
+      id: `transcript_${Date.now()}`,
+      speaker,
+      text,
+      timestamp: new Date(),
+      confidence
+    }
+
+    const updatedSession = {
+      ...session,
+      transcript: [...session.transcript, entry]
+    }
+
+    setSession(updatedSession)
+    localStorage.setItem(`interview_session_${schoolId}`, JSON.stringify(updatedSession))
+    
+    // Save to database
+    saveTranscriptToDatabase(entry)
+  }
+
+  // Handle interview completion
+  const handleInterviewComplete = async () => {
+    if (!session) return
+
+    const completedSession = {
+      ...session,
+      status: 'completed' as const,
+      endTime: new Date()
+    }
+
+    setSession(completedSession)
+    localStorage.removeItem(`interview_session_${schoolId}`)
+    
+    // Save final state to database
+    await saveSessionToDatabase(completedSession)
+    
+    // Close connections
+    if (wsRef.current) {
+      wsRef.current.close()
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+    }
+    
+    // Redirect to report processing page
+    router.push('/ai-interview/report-processing')
+  }
+
+  // Database operations
+  const saveSessionToDatabase = async (sessionData: InterviewSession) => {
+    try {
+      console.log('Saving session to database:', sessionData.id)
+      const response = await fetch('/api/ai-interview-adk/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionData.id,
+          schoolId,
+          status: sessionData.status,
+          startTime: sessionData.startTime,
+          endTime: sessionData.endTime
+        })
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Session API error:', response.status, errorText)
+        throw new Error(`Session API failed: ${response.status} ${errorText}`)
+      }
+      
+      console.log('Session saved successfully')
+    } catch (error) {
+      console.error('Failed to save session:', error)
+      throw error // Re-throw to let caller handle
+    }
+  }
+
+  const saveTranscriptToDatabase = async (entry: TranscriptEntry) => {
+    try {
+      console.log('Saving transcript entry:', entry.id)
+      const response = await fetch('/api/ai-interview-adk/transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionIdRef.current,
+          ...entry
+        })
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Transcript API error:', response.status, errorText)
+        // Don't throw for transcript errors - just log them
+      }
+    } catch (error) {
+      console.error('Failed to save transcript:', error)
+      // Don't throw for transcript errors - just log them
+    }
+  }
+
+  // Start/Resume interview
+  const startInterview = async () => {
+    if (!session) {
+      console.error('Cannot start interview: No session available')
+      toast({
+        title: "Session Error",
+        description: "No session available. Please try refreshing the page.",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    console.log('Starting interview with session:', session.id)
+    
+    try {
+      // Update session status locally first
+      const updatedSession = { ...session, status: 'active' as const }
+      setSession(updatedSession)
+      localStorage.setItem(`interview_session_${schoolId}`, JSON.stringify(updatedSession))
+      console.log('Session status updated to active')
+      
+      // Setup audio first
+      console.log('Setting up audio monitoring...')
+      await setupAudioMonitoring()
+      setIsResuming(canResume)
+      console.log('Audio setup complete')
+      
+      // Start WebSocket connection
+      console.log('Starting WebSocket connection...')
+      await connectToAgent()
+      
+    } catch (error) {
+      console.error('Failed to start interview:', error)
+      toast({
+        title: "Interview Error",
+        description: `Failed to start interview: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Exit interview
+  const handleExit = () => {
+    console.log('Exiting interview')
+    
+    if (session && session.status === 'active') {
+      // Mark session as interrupted
+      const interruptedSession = { ...session, status: 'interrupted' as const, endTime: new Date() }
+      localStorage.setItem(`interview_session_${schoolId}`, JSON.stringify(interruptedSession))
+      saveSessionToDatabase(interruptedSession).catch(error => {
+        console.warn('Failed to save interrupted session:', error)
+      })
+    }
+    
+    // Clean up WebSocket
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
+    
+    // Clean up audio
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    
+    if (audioContextRef.current) {
+      audioContextRef.current.close()
+      audioContextRef.current = null
+    }
+    
+    // Clear reconnection timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = undefined
+    }
+    
+    // Reset states
+    setConnectionState('disconnected')
+    setInterviewState('idle')
+    setAudioLevel(0)
+    
+    // Clear interview state from parent component
+    onExit()
+  }
+
+  // Format elapsed time
+  const getElapsedTime = () => {
+    if (!session?.startTime) return "00:00"
+    const elapsed = Math.floor((new Date().getTime() - new Date(session.startTime).getTime()) / 1000)
+    const minutes = Math.floor(elapsed / 60)
+    const seconds = elapsed % 60
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black text-white z-50 overflow-hidden">
+      {/* Full-screen wave animation background */}
+      <div className="absolute inset-0">
+        <WaveAnimation 
+          isActive={connectionState === 'connected' && interviewState !== 'idle'} 
+          audioLevel={audioLevel}
+          className="w-full h-full"
+        />
+      </div>
+
+      {/* Top status bar */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="absolute top-0 left-0 right-0 z-10 p-6"
+      >
+        <div className="flex items-center justify-between">
+          {/* School and connection status */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Building2 className="w-5 h-5 text-white/80" />
+              <span className="text-sm font-medium text-white/80">{schoolName}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              {connectionState === 'connected' ? (
+                <Wifi className="w-4 h-4 text-green-400" />
+              ) : connectionState === 'connecting' ? (
+                <div className="w-4 h-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <WifiOff className="w-4 h-4 text-red-400" />
+              )}
+              <span className="text-xs text-white/60 capitalize">{connectionState}</span>
+            </div>
+          </div>
+
+          {/* Session timer */}
+          {session && (
+            <div className="flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-white/60" />
+              <span className="text-sm font-mono text-white/60">{getElapsedTime()}</span>
+            </div>
+          )}
+          
+          {/* Exit Button */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleExit}
+            className="text-white/80 hover:bg-white/10"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Main Content */}
+      <div className="flex items-center justify-center h-full px-6">
+        <AnimatePresence mode="wait">
+          {testMode ? (
+            <motion.div
+              key="test-mode"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="text-center text-white max-w-md"
+            >
+              <h2 className="text-2xl font-bold mb-4">Connection Test</h2>
+              <div className="bg-black/50 border border-white/20 rounded-lg p-4 mb-6">
+                <p className="text-white/90 font-mono text-sm">{testStatus}</p>
+              </div>
+              <div className="flex gap-4">
+                <Button onClick={runConnectionTest} className="bg-white text-black hover:bg-white/90">
+                  Run Test Again
+                </Button>
+                <Button variant="outline" onClick={() => setTestMode(false)} className="border-white/30 text-white hover:bg-white/10">
+                  Back to Interview
+                </Button>
+              </div>
+            </motion.div>
+          ) : !session ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-center text-white"
+            >
+              <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p>Initializing session...</p>
+            </motion.div>
+          ) : canResume ? (
+            <motion.div
+              key="resume"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="text-center text-white max-w-md"
+            >
+              <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Resume Interview?</h2>
+              <p className="text-white/70 mb-6">We found an interrupted interview session. Would you like to continue where you left off?</p>
+              <div className="flex gap-4">
+                <Button onClick={startInterview} className="flex-1 bg-white text-black hover:bg-white/90">
+                  Resume Interview
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  localStorage.removeItem(`interview_session_${schoolId}`)
+                  setCanResume(false)
+                }} className="flex-1 border-white/30 text-white hover:bg-white/10">
+                  Start Fresh
+                </Button>
+              </div>
+            </motion.div>
+          ) : connectionState === 'error' ? (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="text-center text-white max-w-md"
+            >
+              <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Connection Error</h2>
+              <p className="text-white/70 mb-2">We're having trouble connecting to the interview service.</p>
+              <p className="text-white/50 text-sm mb-6">The AI interview agent may not be running. You can try demo mode to experience the interface.</p>
+              <div className="flex gap-3">
+                <Button onClick={() => window.location.reload()} className="bg-white text-black hover:bg-white/90">
+                  Retry Connection
+                </Button>
+                <Button onClick={() => setTestMode(true)} variant="outline" className="border-white/30 text-white hover:bg-white/10">
+                  Test Connection
+                </Button>
+                <Button onClick={startDemoMode} variant="outline" className="border-white/30 text-white hover:bg-white/10">
+                  Try Demo Mode
+                </Button>
+                <Button variant="outline" onClick={onExit} className="border-white/30 text-white hover:bg-white/10">
+                  Back
+                </Button>
+              </div>
+            </motion.div>
+          ) : connectionState === 'connected' ? (
+            <motion.div
+              key="interview"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
+              <PulseIndicator 
+                state={interviewState}
+                audioLevel={audioLevel}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="ready"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="text-center text-white"
+            >
+              <h2 className="text-3xl font-bold mb-4">Ready to Begin</h2>
+              <p className="text-white/70 mb-8">Click start when you're ready for your interview</p>
+              <Button size="lg" onClick={startInterview} className="bg-white text-black hover:bg-white/90">
+                Start Interview
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  )
+} 

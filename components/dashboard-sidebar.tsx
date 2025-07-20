@@ -17,11 +17,13 @@ import {
   User,
   ClipboardList,
   UserCircle,
+  Brain,
 } from "lucide-react"
 
 const links = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Application Manager", href: "/applications", icon: ClipboardList },
+  { name: "AI Interview", href: "/ai-interview", icon: Brain },
   { name: "Universities", href: "/universities", icon: GraduationCap },
   { name: "MBA Schools", href: "/mba-schools", icon: BookOpen },
   { name: "Scholarships", href: "/scholarships", icon: BarChart3 },

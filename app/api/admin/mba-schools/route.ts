@@ -46,12 +46,39 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "10")
     const search = searchParams.get("search") || ""
+    const hasPersona = searchParams.get("hasPersona") === "true"
     
     const offset = (page - 1) * limit
 
     let query = supabase
       .from("mba_schools")
       .select("*", { count: "exact" })
+
+    // Filter by schools that have AI interview personas
+    if (hasPersona) {
+      const { data: personaData } = await supabase
+        .from('ai_interview_school_personas')
+        .select('school_id')
+      
+      const schoolIds = personaData?.map(p => p.school_id) || []
+      if (schoolIds.length > 0) {
+        query = query.in('id', schoolIds)
+      } else {
+        // No schools with personas, return empty result
+        return NextResponse.json({
+          data: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false,
+          },
+          success: true,
+        })
+      }
+    }
 
     if (search) {
       query = query.or(`business_school.ilike.%${search}%,location.ilike.%${search}%,country.ilike.%${search}%`)
