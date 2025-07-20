@@ -27,3 +27,5 @@ yarn-error.log*
 next-env.d.ts
 .env
 .vscode/settings.jsongoogle-cloud-credentials.json
+agent-starter-pack/
+.venv/
