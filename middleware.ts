@@ -20,7 +20,8 @@ const authRequiredPaths = [
 
 // Admin paths that require special permissions
 const adminPaths = [
-  "/admin"
+  "/admin",
+  "/ai-interview"
 ]
 
 export async function middleware(request: NextRequest) {

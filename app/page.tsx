@@ -846,24 +846,26 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* AI Interview Practice */}
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/ai-interview'}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-blue-900">AI Interview</CardTitle>
-              <MessageSquare className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-900">Practice</div>
-              <p className="text-xs text-blue-700 mt-1">
-                Master your MBA interviews
-              </p>
-              <Button size="sm" className="w-full mt-2 bg-blue-600 hover:bg-blue-700" asChild>
-                <Link href="/ai-interview">
-                  Start Session
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+          {/* AI Interview Practice - Admin Only */}
+          {profileData?.role === 'admin' && (
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/ai-interview'}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-blue-900">AI Interview</CardTitle>
+                <MessageSquare className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-900">Practice</div>
+                <p className="text-xs text-blue-700 mt-1">
+                  Master your MBA interviews
+                </p>
+                <Button size="sm" className="w-full mt-2 bg-blue-600 hover:bg-blue-700" asChild>
+                  <Link href="/ai-interview">
+                    Start Session
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Main Dashboard Content */}

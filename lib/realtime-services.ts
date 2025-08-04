@@ -587,7 +587,7 @@ export class UserRealtimeService {
       const offset = (page - 1) * limit
 
       let query = supabase
-        .from('users')
+        .from('profiles')
         .select('*', { count: 'exact' })
 
       if (search?.trim()) {
@@ -629,7 +629,7 @@ export class UserRealtimeService {
   static async createUser(data: Partial<User>): Promise<User> {
     try {
       const { data: result, error } = await supabase
-        .from('users')
+        .from('profiles')
         .insert([data])
         .select()
         .single()
@@ -645,7 +645,7 @@ export class UserRealtimeService {
   static async updateUser(id: string, data: Partial<User>): Promise<User> {
     try {
       const { data: result, error } = await supabase
-        .from('users')
+        .from('profiles')
         .update(data)
         .eq('id', id)
         .select()
@@ -662,7 +662,7 @@ export class UserRealtimeService {
   static async deleteUser(id: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .delete()
         .eq('id', id)
 

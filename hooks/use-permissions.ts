@@ -37,7 +37,7 @@ export function usePermissions(): UsePermissionsReturn {
         
         // First check the database for the user's role
         const { data: userData, error } = await supabase
-          .from('users')
+          .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single()
