@@ -74,14 +74,14 @@ function transformToSchoolTarget(dbResult: any): SchoolTarget {
     school_name: school?.business_school || 'Unknown School',
     location: school?.location || 'Unknown Location',
     country: school?.country,
-    website: school?.website,
+    website: undefined, // website not available in mba_schools table
     qs_mba_rank: school?.qs_mba_rank,
     ft_global_mba_rank: school?.ft_global_mba_rank,
     bloomberg_mba_rank: school?.bloomberg_mba_rank,
     mean_gmat: school?.mean_gmat,
     mean_gpa: school?.mean_gpa,
-    avg_starting_salary: school?.avg_starting_salary,
-    tuition_total: school?.tuition_total,
+    avg_starting_salary: school?.avg_starting_salary?.toString(),
+    tuition_total: school?.tuition_total?.toString(),
     class_size: school?.class_size,
     
     // Computed fields
@@ -119,7 +119,6 @@ export async function GET(request: NextRequest): Promise<NextResponse<SchoolTarg
           business_school,
           location,
           country,
-          website,
           qs_mba_rank,
           ft_global_mba_rank,
           bloomberg_mba_rank,
@@ -130,8 +129,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<SchoolTarg
           class_size,
           r1_deadline,
           r2_deadline,
-          r3_deadline,
-          application_deadlines
+          r3_deadline
         )
       `)
       .eq('user_id', user.id)
@@ -261,7 +259,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<SchoolTar
           business_school,
           location,
           country,
-          website,
           qs_mba_rank,
           ft_global_mba_rank,
           bloomberg_mba_rank,
@@ -272,8 +269,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SchoolTar
           class_size,
           r1_deadline,
           r2_deadline,
-          r3_deadline,
-          application_deadlines
+          r3_deadline
         )
       `)
       .single()
@@ -341,7 +337,6 @@ export async function PUT(request: NextRequest): Promise<NextResponse<SchoolTarg
           business_school,
           location,
           country,
-          website,
           qs_mba_rank,
           ft_global_mba_rank,
           bloomberg_mba_rank,
@@ -352,8 +347,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse<SchoolTarg
           class_size,
           r1_deadline,
           r2_deadline,
-          r3_deadline,
-          application_deadlines
+          r3_deadline
         )
       `)
       .single()
