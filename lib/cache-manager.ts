@@ -1,5 +1,5 @@
 // Unified Cache Manager for Application-wide Caching
-import { createClient } from '@/lib/supabaseClient'
+import { createClient } from '@/lib/supabase/client'
 
 interface CacheEntry<T> {
   data: T

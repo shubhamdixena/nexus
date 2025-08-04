@@ -139,8 +139,24 @@ export function useMBASchools(params: any = {}) {
   return useCachedData({
     cacheKey,
     fetchFn: async () => {
-      const { OptimizedMBASchoolService } = await import('@/lib/optimized-realtime-services')
-      return await OptimizedMBASchoolService.getMBASchools(params)
+      // Build query parameters
+      const queryParams = new URLSearchParams()
+      if (params.page) queryParams.append('page', params.page.toString())
+      if (params.limit) queryParams.append('limit', params.limit.toString())
+      if (params.search) queryParams.append('search', params.search)
+      if (params.country) queryParams.append('country', params.country)
+      if (params.ranking) queryParams.append('ranking', params.ranking)
+      if (params.category) queryParams.append('category', params.category)
+      if (params.rankingSystem) queryParams.append('rankingSystem', params.rankingSystem)
+      if (params.gmatRange) queryParams.append('gmatRange', params.gmatRange)
+      if (params.employmentRate) queryParams.append('employmentRate', params.employmentRate)
+
+      const response = await fetch(`/api/mba-schools?${queryParams.toString()}`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to fetch MBA schools: ${response.status} ${errorText}`)
+      }
+      return await response.json()
     },
     cacheTtl: 5 * 60 * 1000, // 5 minutes
     dependencies: [JSON.stringify(params)]
@@ -274,6 +290,34 @@ export function useScholarships(params: {
       
       const response = await fetch(`/api/scholarships?${queryParams.toString()}`)
       if (!response.ok) throw new Error('Failed to fetch scholarships')
+      return await response.json()
+    },
+    cacheTtl: 10 * 60 * 1000, // 10 minutes
+    dependencies: [JSON.stringify(params)]
+  })
+}
+
+export function useUniversities(params: {
+  page?: number
+  limit?: number
+  search?: string
+  country?: string
+  program?: string
+} = {}) {
+  const cacheKey = `universities:${JSON.stringify(params)}`
+  
+  return useCachedData({
+    cacheKey,
+    fetchFn: async () => {
+      const queryParams = new URLSearchParams()
+      if (params.page) queryParams.append('page', params.page.toString())
+      if (params.limit) queryParams.append('limit', params.limit.toString())
+      if (params.search) queryParams.append('search', params.search)
+      if (params.country) queryParams.append('country', params.country)
+      if (params.program) queryParams.append('program', params.program)
+      
+      const response = await fetch(`/api/universities?${queryParams.toString()}`)
+      if (!response.ok) throw new Error('Failed to fetch universities')
       return await response.json()
     },
     cacheTtl: 10 * 60 * 1000, // 10 minutes

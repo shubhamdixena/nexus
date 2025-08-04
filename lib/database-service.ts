@@ -6,7 +6,7 @@ import type {
   UniversityFilters, 
   ScholarshipFilters 
 } from "@/types"
-import { createClient } from "@/lib/supabaseClient"
+import { createClient } from "@/lib/supabase/client"
 
 // Create a client instance for real-time operations
 const supabase = createClient()

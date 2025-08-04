@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Loader2, Save, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { EnhancedSchoolSelector } from "@/components/enhanced-school-selector"
+import { ModernSchoolSelector } from "@/components/school-targets/modern-school-selector"
 import { createClient } from "@/lib/supabase/client"
 
 // Compact schemas for form validation
@@ -278,7 +278,7 @@ export function CompactProfileEditForm({ section, data, onSave, onDataChange }: 
 
     return (
       <div className="space-y-4">
-        <EnhancedSchoolSelector
+        <ModernSchoolSelector
           value={data.schoolTargets || []}
           onChange={handleSchoolTargetsChange}
           userId={userId}

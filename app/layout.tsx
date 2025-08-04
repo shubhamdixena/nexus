@@ -3,6 +3,7 @@ import { AuthProvider } from "@/components/auth-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ErrorBoundary } from "@/components/global-error-boundary"
 import { EnhancedToaster } from "@/components/enhanced-notifications"
+import { ReactQueryProvider } from "@/components/react-query-provider"
 import "@/app/globals.css"
 
 export default function RootLayout({
@@ -14,16 +15,18 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <ErrorBoundary>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-          >
-            <AuthProvider>
-              {children}
-              <EnhancedToaster />
-            </AuthProvider>
-          </ThemeProvider>
+          <ReactQueryProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+            >
+              <AuthProvider>
+                {children}
+                <EnhancedToaster />
+              </AuthProvider>
+            </ThemeProvider>
+          </ReactQueryProvider>
         </ErrorBoundary>
       </body>
     </html>

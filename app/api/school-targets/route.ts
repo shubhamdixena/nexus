@@ -1,7 +1,97 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseServerClientForAPI } from "@/lib/supabase/server"
+import { 
+  CreateSchoolTargetRequest, 
+  UpdateSchoolTargetRequest,
+  SchoolTarget,
+  SchoolTargetsResponse,
+  SchoolTargetResponse 
+} from "@/types/school-targets"
 
-export async function GET(request: NextRequest) {
+/**
+ * Enhanced School Targets API Route
+ * 
+ * Provides comprehensive CRUD operations for school targets with proper typing,
+ * optimized queries, and computed fields for UI consumption.
+ */
+
+// Helper function to compute ranking tier
+function computeRankingTier(rank?: number): 'top-10' | 'top-25' | 'top-50' | 'top-100' | 'unranked' {
+  if (!rank) return 'unranked'
+  if (rank <= 10) return 'top-10'
+  if (rank <= 25) return 'top-25'
+  if (rank <= 50) return 'top-50'
+  if (rank <= 100) return 'top-100'
+  return 'unranked'
+}
+
+// Helper function to compute deadline based on application round and school deadlines
+function computeDeadline(applicationRound?: string, schoolDeadlines?: any): string | undefined {
+  if (!applicationRound || !schoolDeadlines) return undefined
+  
+  const roundMap: Record<string, string> = {
+    'R1': schoolDeadlines.r1_deadline,
+    'R2': schoolDeadlines.r2_deadline,
+    'R3': schoolDeadlines.r3_deadline,
+    'Round 1': schoolDeadlines.r1_deadline,
+    'Round 2': schoolDeadlines.r2_deadline,
+    'Round 3': schoolDeadlines.r3_deadline,
+  }
+  
+  return roundMap[applicationRound]
+}
+
+// Helper function to compute days until deadline
+function computeDaysUntilDeadline(deadline?: string): number | undefined {
+  if (!deadline) return undefined
+  
+  const deadlineDate = new Date(deadline)
+  const today = new Date()
+  const diffTime = deadlineDate.getTime() - today.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  return diffDays
+}
+
+// Transform database result to SchoolTarget
+function transformToSchoolTarget(dbResult: any): SchoolTarget {
+  const school = dbResult.mba_schools
+  const deadline = computeDeadline(dbResult.application_round, school)
+  
+  return {
+    // From user_school_targets
+    id: dbResult.id,
+    school_id: dbResult.school_id,
+    target_category: dbResult.target_category,
+    program_of_interest: dbResult.program_of_interest,
+    application_round: dbResult.application_round,
+    notes: dbResult.notes,
+    priority_score: dbResult.priority_score,
+    created_at: dbResult.created_at,
+    updated_at: dbResult.updated_at,
+    
+    // From mba_schools (joined data)
+    school_name: school?.business_school || 'Unknown School',
+    location: school?.location || 'Unknown Location',
+    country: school?.country,
+    website: school?.website,
+    qs_mba_rank: school?.qs_mba_rank,
+    ft_global_mba_rank: school?.ft_global_mba_rank,
+    bloomberg_mba_rank: school?.bloomberg_mba_rank,
+    mean_gmat: school?.mean_gmat,
+    mean_gpa: school?.mean_gpa,
+    avg_starting_salary: school?.avg_starting_salary,
+    tuition_total: school?.tuition_total,
+    class_size: school?.class_size,
+    
+    // Computed fields
+    ranking_tier: computeRankingTier(school?.qs_mba_rank),
+    deadline,
+    days_until_deadline: computeDaysUntilDeadline(deadline),
+  }
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse<SchoolTargetsResponse | { error: string }>> {
   try {
     const supabase = createSupabaseServerClientForAPI(request)
     
@@ -11,8 +101,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Fetch user's school targets with school information
-    const { data: targets, error } = await supabase
+    // Parse query parameters for filtering
+    const { searchParams } = new URL(request.url)
+    const category = searchParams.getAll('category')
+    const ranking_tier = searchParams.getAll('ranking_tier')
+    const application_round = searchParams.getAll('application_round')
+    const priority_min = searchParams.get('priority_min')
+    const priority_max = searchParams.get('priority_max')
+
+    // Build the query
+    let query = supabase
       .from('user_school_targets')
       .select(`
         *,
@@ -20,85 +118,83 @@ export async function GET(request: NextRequest) {
           id,
           business_school,
           location,
+          country,
+          website,
           qs_mba_rank,
           ft_global_mba_rank,
           bloomberg_mba_rank,
           mean_gmat,
+          mean_gpa,
           avg_starting_salary,
           tuition_total,
-          class_size
+          class_size,
+          r1_deadline,
+          r2_deadline,
+          r3_deadline,
+          application_deadlines
         )
       `)
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+
+    // Apply filters
+    if (category.length > 0) {
+      query = query.in('target_category', category)
+    }
+    if (application_round.length > 0) {
+      query = query.in('application_round', application_round)
+    }
+    if (priority_min) {
+      query = query.gte('priority_score', parseInt(priority_min))
+    }
+    if (priority_max) {
+      query = query.lte('priority_score', parseInt(priority_max))
+    }
+
+    // Execute query
+    const { data: targets, error, count } = await query
+      .order('priority_score', { ascending: false })
 
     if (error) {
       console.error('Error fetching school targets:', error)
       return NextResponse.json({ error: "Failed to fetch school targets" }, { status: 500 })
     }
 
-    // Transform the data to flatten school information
-    const transformedTargets = targets?.map(target => {
-      const school = target.mba_schools
-      const ranking_tier = school?.qs_mba_rank <= 10 ? 'top-10' : 
-                          school?.qs_mba_rank <= 25 ? 'top-25' : 
-                          school?.qs_mba_rank <= 50 ? 'top-50' : 
-                          school?.qs_mba_rank <= 100 ? 'top-100' : 'unranked'
-      
-      return {
-        id: target.id,
-        school_id: target.school_id,
-        school_name: school?.business_school,
-        location: school?.location,
-        ranking_tier,
-        program_of_interest: target.program_of_interest,
-        application_round: target.application_round,
-        notes: target.notes,
-        priority_score: target.priority_score,
-        target_category: target.target_category,
-        qs_mba_rank: school?.qs_mba_rank,
-        ft_global_mba_rank: school?.ft_global_mba_rank,
-        bloomberg_mba_rank: school?.bloomberg_mba_rank,
-        mean_gmat: school?.mean_gmat,
-        avg_starting_salary: school?.avg_starting_salary,
-        tuition_total: school?.tuition_total
-      }
-    }) || []
+    // Transform the data
+    const transformedTargets = (targets || []).map(transformToSchoolTarget)
 
-    return NextResponse.json({ targets: transformedTargets })
+    // Apply ranking tier filter (post-processing since it's computed)
+    const filteredTargets = ranking_tier.length > 0
+      ? transformedTargets.filter(target => ranking_tier.includes(target.ranking_tier))
+      : transformedTargets
+
+    return NextResponse.json({ 
+      targets: filteredTargets,
+      total_count: filteredTargets.length
+    })
   } catch (error) {
     console.error('Unexpected error in GET /api/school-targets:', error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
-export async function POST(request: NextRequest) {
-  let supabase;
+export async function POST(request: NextRequest): Promise<NextResponse<SchoolTargetResponse | { error: string; details?: string }>> {
   try {
-    supabase = createSupabaseServerClientForAPI(request);
-  } catch (error) {
-    console.error('Error creating Supabase client:', error);
-    return NextResponse.json(
-      { error: "Server configuration error.", details: "Could not initialize Supabase client." },
-      { status: 500 }
-    );
-  }
-
-  try {
+    const supabase = createSupabaseServerClientForAPI(request)
+    
     // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body: CreateSchoolTargetRequest = await request.json()
     const {
       school_id,
+      target_category = 'target',
       program_of_interest,
       application_round,
       notes,
-      priority_score,
-      target_category
+      priority_score = 5
     } = body
 
     // Validate required fields
@@ -109,12 +205,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // First, verify the school exists
+    // Verify the school exists
     const { data: schoolExists, error: schoolCheckError } = await supabase
       .from('mba_schools')
       .select('id')
       .eq('id', school_id)
-      .maybeSingle() // Use maybeSingle to avoid error when no row is found
+      .maybeSingle()
 
     if (schoolCheckError) {
       console.error('Error checking if school exists:', schoolCheckError)
@@ -125,99 +221,82 @@ export async function POST(request: NextRequest) {
     }
 
     if (!schoolExists) {
-      console.error('Attempted to add a target for a non-existent school:', { school_id })
       return NextResponse.json(
         { error: `School with ID ${school_id} not found.` },
         { status: 404 }
       )
     }
 
-    // Insert new school target with all required fields
+    // Check for duplicates
+    const { data: existing } = await supabase
+      .from('user_school_targets')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('school_id', school_id)
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "You have already added this school as a target." }, 
+        { status: 409 }
+      )
+    }
+
+    // Insert new school target
     const { data: newTarget, error } = await supabase
       .from('user_school_targets')
       .insert({
         user_id: user.id,
         school_id,
-        target_category: target_category || 'target', // Default to 'target' if not provided
+        target_category,
         program_of_interest,
         application_round,
         notes,
-        priority_score: priority_score || 5
+        priority_score
       })
       .select(`
         *,
         mba_schools:school_id (
+          id,
           business_school,
           location,
+          country,
+          website,
           qs_mba_rank,
           ft_global_mba_rank,
           bloomberg_mba_rank,
           mean_gmat,
+          mean_gpa,
           avg_starting_salary,
-          tuition_total
+          tuition_total,
+          class_size,
+          r1_deadline,
+          r2_deadline,
+          r3_deadline,
+          application_deadlines
         )
       `)
       .single()
 
     if (error) {
-      console.error('Full error object from Supabase:', JSON.stringify(error, null, 2))
-      
-      if (error.code === '23505') { // Unique constraint violation
-        return NextResponse.json(
-          { error: "You have already added this school as a target." }, 
-          { status: 409 }
-        )
-      }
-      if (error.code === '23503') { // Foreign key constraint violation
-        return NextResponse.json(
-          { error: "Invalid school reference. The school may have been removed." }, 
-          { status: 400 }
-        )
-      }
+      console.error('Error creating school target:', error)
       return NextResponse.json({ 
         error: "Failed to create school target.", 
         details: error.message 
       }, { status: 500 })
     }
 
-    // Transform the response
-    const school = newTarget.mba_schools
-    const ranking_tier = school?.qs_mba_rank <= 10 ? 'top-10' : 
-                        school?.qs_mba_rank <= 25 ? 'top-25' : 
-                        school?.qs_mba_rank <= 50 ? 'top-50' : 
-                        school?.qs_mba_rank <= 100 ? 'top-100' : 'unranked'
-    
-    const transformedTarget = {
-      id: newTarget.id,
-      school_id: newTarget.school_id,
-      school_name: school?.business_school,
-      location: school?.location,
-      ranking_tier,
-      program_of_interest: newTarget.program_of_interest,
-      application_round: newTarget.application_round,
-      notes: newTarget.notes,
-      priority_score: newTarget.priority_score,
-      target_category: newTarget.target_category,
-      qs_mba_rank: school?.qs_mba_rank,
-      ft_global_mba_rank: school?.ft_global_mba_rank,
-      bloomberg_mba_rank: school?.bloomberg_mba_rank,
-      mean_gmat: school?.mean_gmat,
-      avg_starting_salary: school?.avg_starting_salary,
-      tuition_total: school?.tuition_total
-    }
+    // Transform and return the new target
+    const transformedTarget = transformToSchoolTarget(newTarget)
 
     return NextResponse.json({ target: transformedTarget }, { status: 201 })
   } catch (error) {
     console.error('Unexpected error in POST /api/school-targets:', error)
-    // Check if it's a known error shape
-    if (error && typeof error === 'object' && 'message' in error) {
-      return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ error: "An unknown internal server error occurred." }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PUT(request: NextRequest): Promise<NextResponse<SchoolTargetResponse | { error: string }>> {
   try {
     const supabase = createSupabaseServerClientForAPI(request)
     
@@ -227,9 +306,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body: UpdateSchoolTargetRequest = await request.json()
     const {
       id,
+      target_category,
       program_of_interest,
       application_round,
       notes,
@@ -245,24 +325,35 @@ export async function PUT(request: NextRequest) {
     const { data: updatedTarget, error } = await supabase
       .from('user_school_targets')
       .update({
+        target_category,
         program_of_interest,
         application_round,
         notes,
-        priority_score
+        priority_score,
+        updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .eq('user_id', user.id) // Ensure user can only update their own targets
       .select(`
         *,
         mba_schools:school_id (
+          id,
           business_school,
           location,
+          country,
+          website,
           qs_mba_rank,
           ft_global_mba_rank,
           bloomberg_mba_rank,
           mean_gmat,
+          mean_gpa,
           avg_starting_salary,
-          tuition_total
+          tuition_total,
+          class_size,
+          r1_deadline,
+          r2_deadline,
+          r3_deadline,
+          application_deadlines
         )
       `)
       .single()
@@ -276,31 +367,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Target not found or unauthorized" }, { status: 404 })
     }
 
-    // Transform the response
-    const school = updatedTarget.mba_schools
-    const ranking_tier = school?.qs_mba_rank <= 10 ? 'top-10' : 
-                        school?.qs_mba_rank <= 25 ? 'top-25' : 
-                        school?.qs_mba_rank <= 50 ? 'top-50' : 
-                        school?.qs_mba_rank <= 100 ? 'top-100' : 'unranked'
-    
-    const transformedTarget = {
-      id: updatedTarget.id,
-      school_id: updatedTarget.school_id,
-      school_name: school?.business_school,
-      location: school?.location,
-      ranking_tier,
-      program_of_interest: updatedTarget.program_of_interest,
-      application_round: updatedTarget.application_round,
-      notes: updatedTarget.notes,
-      priority_score: updatedTarget.priority_score,
-      target_category: updatedTarget.target_category,
-      qs_mba_rank: school?.qs_mba_rank,
-      ft_global_mba_rank: school?.ft_global_mba_rank,
-      bloomberg_mba_rank: school?.bloomberg_mba_rank,
-      mean_gmat: school?.mean_gmat,
-      avg_starting_salary: school?.avg_starting_salary,
-      tuition_total: school?.tuition_total
-    }
+    // Transform and return the updated target
+    const transformedTarget = transformToSchoolTarget(updatedTarget)
 
     return NextResponse.json({ target: transformedTarget })
   } catch (error) {
@@ -309,7 +377,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse<{ message: string } | { error: string }>> {
   try {
     const supabase = createSupabaseServerClientForAPI(request)
     

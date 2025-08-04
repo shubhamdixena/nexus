@@ -1,5 +1,5 @@
 // Optimized Realtime Services with Unified Caching
-import { createClient } from "@/lib/supabaseClient"
+import { createClient } from "@/lib/supabase/client"
 import CacheManager, { CacheKeys } from '@/lib/cache-manager'
 import type { 
   University, 

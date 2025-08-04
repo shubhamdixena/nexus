@@ -38,7 +38,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { EnhancedSchoolSelector } from "@/components/enhanced-school-selector"
+import { ModernSchoolSelector } from "@/components/school-targets/modern-school-selector"
 
 // Comprehensive schemas for all profile sections - all fields optional
 const personalInfoSchema = z.object({
@@ -1097,21 +1097,12 @@ function CareerGoalsFields({ form }: { form: any }) {
 
  // Target Universities Fields Component
 function TargetUniversitiesFields({ form }: { form: any }) {
-  const [targets, setTargets] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
   // Get current user ID
   const [userId, setUserId] = useState<string>("")
 
   useEffect(() => {
     loadUserData()
   }, [])
-
-  useEffect(() => {
-    if (userId) {
-      loadSchoolTargets()
-    }
-  }, [userId])
 
   const loadUserData = async () => {
     try {
@@ -1125,42 +1116,13 @@ function TargetUniversitiesFields({ form }: { form: any }) {
     }
   }
 
-  const loadSchoolTargets = async () => {
-    if (!userId) return
-    
-    try {
-      setIsLoading(true)
-      const response = await fetch('/api/school-targets')
-      if (response.ok) {
-        const data = await response.json()
-        setTargets(data.targets || [])
-      }
-    } catch (error) {
-      console.error('Error loading school targets:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleTargetsChange = async (newTargets: any[]) => {
-    setTargets(newTargets)
-    
-    // Auto-save targets to database
-    try {
-      // For now, just update the local state
-      // The EnhancedSchoolSelector component handles the API calls
-    } catch (error) {
-      console.error('Error saving targets:', error)
-    }
-  }
-
-  if (isLoading || !userId) {
+  if (!userId) {
     return (
       <div className="space-y-4">
         <div className="flex justify-center items-center py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-muted-foreground">Loading your target schools...</p>
+            <p className="text-muted-foreground">Loading...</p>
           </div>
         </div>
       </div>
@@ -1168,10 +1130,10 @@ function TargetUniversitiesFields({ form }: { form: any }) {
   }
 
   return (
-    <EnhancedSchoolSelector
-      value={targets}
-      onChange={handleTargetsChange}
+    <ModernSchoolSelector
       userId={userId}
+      maxTargets={15}
+      readonly={false}
     />
   )
 }

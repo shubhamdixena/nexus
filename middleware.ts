@@ -15,7 +15,15 @@ const publicPaths = [
 // Paths that require authentication but don't need profile setup check
 const authRequiredPaths = [
   "/profile",
-  "/api/profile"
+  "/api/profile",
+  "/mba-schools",
+  "/universities", 
+  "/scholarships",
+  "/api/mba-schools",
+  "/api/universities",
+  "/api/scholarships",
+  "/api/school-targets",
+  "/api/school-deadlines"
 ]
 
 // Admin paths that require special permissions
@@ -40,7 +48,12 @@ export async function middleware(request: NextRequest) {
   // For API routes (except auth and profile), allow them to handle their own authentication
   if (pathname.startsWith("/api/") && 
       !pathname.startsWith("/api/auth") && 
-      !pathname.startsWith("/api/profile")) {
+      !pathname.startsWith("/api/profile") &&
+      !pathname.startsWith("/api/mba-schools") &&
+      !pathname.startsWith("/api/universities") &&
+      !pathname.startsWith("/api/scholarships") &&
+      !pathname.startsWith("/api/school-targets") &&
+      !pathname.startsWith("/api/school-deadlines")) {
     return NextResponse.next()
   }
 
@@ -249,5 +262,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
 }
