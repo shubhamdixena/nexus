@@ -151,10 +151,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // If user is authenticated and visiting the root, redirect to applications page  
-    if (pathname === '/' && user) {
-      return NextResponse.redirect(new URL("/applications", request.url))
-    }
+    // Authenticated users can access the dashboard overview at root path
+    // Remove the redirect to /applications so users see the dashboard overview by default
 
     // Verify user email is confirmed
     if (!user.email_confirmed_at && !user.phone_confirmed_at) {

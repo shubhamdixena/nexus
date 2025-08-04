@@ -30,8 +30,8 @@ export default function LoginPage() {
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // If there's a callback URL, use it; otherwise go to applications page
-        const redirectUrl = callbackUrl || "/applications"
+        // If there's a callback URL, use it; otherwise go to dashboard overview (root page)
+        const redirectUrl = callbackUrl || "/"
         router.push(redirectUrl)
       }
     }
@@ -57,8 +57,8 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Redirect to callback URL or applications page instead of root
-        router.push(callbackUrl || "/applications")
+        // Redirect to callback URL or dashboard overview (root page) instead of applications page
+        router.push(callbackUrl || "/")
       }
     } catch (err: any) {
       setError("An unexpected error occurred. Please try again.")

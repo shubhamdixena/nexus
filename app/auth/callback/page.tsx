@@ -38,7 +38,7 @@ function AuthCallbackContent() {
           if (!isComplete) {
             router.push('/profile?required=true')
           } else {
-            router.push('/applications')
+            router.push('/')
           }
         } else {
           router.push('/auth/login')
