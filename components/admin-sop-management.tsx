@@ -55,7 +55,7 @@ export function AdminSopManagement() {
     field: "",
     country: "",
     status: "",
-    sop_status: "",
+    sop_status: "all",
   })
 
   const [newSOP, setNewSOP] = useState({
@@ -225,7 +225,8 @@ export function AdminSopManagement() {
     return <Badge variant={variants[status as keyof typeof variants] || "secondary"}>{status}</Badge>
   }
 
-  const getSOPStatusBadge = (status: string) => {
+  const getSOPStatusBadge = (status: string | undefined) => {
+    if (!status) return <Badge variant="secondary">Unknown</Badge>
     const variants = {
       draft: "secondary",
       final: "default",
@@ -241,18 +242,22 @@ export function AdminSopManagement() {
       field: "",
       country: "",
       status: "",
-      sop_status: "",
+      sop_status: "all",
     })
   }
 
-  const filteredSOPs = sops.filter((sop) =>
-    sop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sop.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sop.program.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sop.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sop.field.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sop.country.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const filteredSOPs = sops.filter((sop) => {
+    const matchesSearch = sop.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sop.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sop.program.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sop.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sop.field.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sop.country.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesStatus = filters.sop_status === "all" || !filters.sop_status || sop.sop_status === filters.sop_status
+    
+    return matchesSearch && matchesStatus
+  })
 
   const stats = {
     total: totalCount,
@@ -423,7 +428,7 @@ export function AdminSopManagement() {
                         <SelectValue placeholder="All SOP statuses" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All</SelectItem>
+                        <SelectItem value="all">All</SelectItem>
                         <SelectItem value="draft">Draft</SelectItem>
                         <SelectItem value="final">Final</SelectItem>
                         <SelectItem value="submitted">Submitted</SelectItem>

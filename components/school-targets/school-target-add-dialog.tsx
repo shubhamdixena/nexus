@@ -56,7 +56,7 @@ export function SchoolTargetAddDialog({
   const [formData, setFormData] = useState({
     target_category: 'target' as 'target' | 'safety' | 'reach',
     program_of_interest: '',
-    application_round: '',
+    application_round: 'none',
     notes: '',
     priority_score: 5,
   })
@@ -67,7 +67,8 @@ export function SchoolTargetAddDialog({
     try {
       await createMutation.mutateAsync({
         school_id: school.id,
-        ...formData
+        ...formData,
+        application_round: formData.application_round === 'none' ? undefined : formData.application_round
       })
 
       toast({
@@ -79,7 +80,7 @@ export function SchoolTargetAddDialog({
       setFormData({
         target_category: 'target',
         program_of_interest: '',
-        application_round: '',
+        application_round: 'none',
         notes: '',
         priority_score: 5,
       })
@@ -99,7 +100,7 @@ export function SchoolTargetAddDialog({
     setFormData({
       target_category: 'target',
       program_of_interest: '',
-      application_round: '',
+      application_round: 'none',
       notes: '',
       priority_score: 5,
     })
@@ -235,7 +236,7 @@ export function SchoolTargetAddDialog({
                 <SelectValue placeholder="Select application round" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No round selected</SelectItem>
+                <SelectItem value="none">No round selected</SelectItem>
                 <SelectItem value="R1">Round 1 (Early)</SelectItem>
                 <SelectItem value="R2">Round 2 (Regular)</SelectItem>
                 <SelectItem value="R3">Round 3 (Late)</SelectItem>

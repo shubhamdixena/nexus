@@ -54,7 +54,7 @@ export function SchoolTargetEditDialog({
   const [formData, setFormData] = useState({
     target_category: target.target_category,
     program_of_interest: target.program_of_interest || '',
-    application_round: target.application_round || '',
+    application_round: target.application_round || 'none',
     notes: target.notes || '',
     priority_score: target.priority_score,
   })
@@ -64,7 +64,7 @@ export function SchoolTargetEditDialog({
     setFormData({
       target_category: target.target_category,
       program_of_interest: target.program_of_interest || '',
-      application_round: target.application_round || '',
+      application_round: target.application_round || 'none',
       notes: target.notes || '',
       priority_score: target.priority_score,
     })
@@ -74,7 +74,8 @@ export function SchoolTargetEditDialog({
     try {
       const result = await updateMutation.mutateAsync({
         id: target.id,
-        ...formData
+        ...formData,
+        application_round: formData.application_round === 'none' ? undefined : formData.application_round
       })
 
       toast({
@@ -97,7 +98,7 @@ export function SchoolTargetEditDialog({
     setFormData({
       target_category: target.target_category,
       program_of_interest: target.program_of_interest || '',
-      application_round: target.application_round || '',
+      application_round: target.application_round || 'none',
       notes: target.notes || '',
       priority_score: target.priority_score,
     })
@@ -180,7 +181,7 @@ export function SchoolTargetEditDialog({
             <Label className="text-base font-medium">Application Round</Label>
             <Select 
               value={formData.application_round} 
-              onValueChange={(value) => 
+              onValueChange={(value) =>
                 setFormData(prev => ({ ...prev, application_round: value }))
               }
             >
@@ -188,7 +189,7 @@ export function SchoolTargetEditDialog({
                 <SelectValue placeholder="Select application round" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No round selected</SelectItem>
+                <SelectItem value="none">No round selected</SelectItem>
                 <SelectItem value="R1">Round 1 (Early)</SelectItem>
                 <SelectItem value="R2">Round 2 (Regular)</SelectItem>
                 <SelectItem value="R3">Round 3 (Late)</SelectItem>

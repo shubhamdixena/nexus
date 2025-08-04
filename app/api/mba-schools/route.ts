@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createSupabaseServerClientForAPI } from '@/lib/supabase/server'
 import type { MBASchool, MBASchoolListAPIResponse } from "@/types/mba-school-master"
 
 export async function GET(request: NextRequest) {
@@ -12,17 +11,14 @@ export async function GET(request: NextRequest) {
     const search = url.searchParams.get('search') || ''
     const offset = (page - 1) * limit
 
-    // Create Supabase client for public access
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get() { return undefined }, // No cookies needed for public access
-        },
-      }
-    )
+    // Create authenticated Supabase client
+    const supabase = createSupabaseServerClientForAPI(request)
+    
+    // Get the authenticated user (required for RLS policies)
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
     // Build query
     let query = supabase
@@ -119,18 +115,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-        },
-      }
-    )
+    const supabase = createSupabaseServerClientForAPI(request)
 
     // Authenticate the user for creating MBA schools
     const { data: { user }, error: authError } = await supabase.auth.getUser()

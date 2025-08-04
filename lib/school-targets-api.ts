@@ -103,6 +103,7 @@ class SchoolTargetsAPI {
   static async getSchools(search?: string): Promise<MBASchoolOption[]> {
     const params = new URLSearchParams()
     if (search) params.append('search', search)
+    params.append('limit', '100') // Get more results for search
     
     const url = `/api/mba-schools${params.toString() ? `?${params.toString()}` : ''}`
     const response = await fetch(url)
@@ -112,7 +113,20 @@ class SchoolTargetsAPI {
     }
     
     const data = await response.json()
-    return data.schools || []
+    
+    // Transform the MBA schools data to match MBASchoolOption interface
+    const schools = (data.data || []).map((school: any): MBASchoolOption => ({
+      id: school.id,
+      name: school.business_school || school.name || 'Unknown School',
+      location: school.location || 'Unknown Location',
+      country: school.country,
+      qs_mba_rank: school.qs_mba_rank,
+      ft_global_mba_rank: school.ft_global_mba_rank,
+      bloomberg_mba_rank: school.bloomberg_mba_rank,
+      website: school.website
+    }))
+    
+    return schools
   }
 }
 
@@ -259,7 +273,7 @@ export function useSchools(search?: string) {
   return useQuery<MBASchoolOption[], Error>({
     queryKey: schoolKeys.list({ search }),
     queryFn: () => SchoolTargetsAPI.getSchools(search),
-    enabled: true,
+    enabled: !search || search.length >= 2, // Only enable if no search or search is at least 2 characters
     staleTime: 30 * 60 * 1000, // 30 minutes - schools don't change often
     gcTime: 60 * 60 * 1000, // 1 hour
     refetchOnWindowFocus: false,

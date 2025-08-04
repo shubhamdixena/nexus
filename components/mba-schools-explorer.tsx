@@ -333,9 +333,9 @@ export function MBASchoolsExplorer() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="any">Any</SelectItem>
-                    {countries.map((country) => (
-                      <SelectItem key={country} value={country || ''}>
-                        {country || 'Unknown'}
+                    {countries.filter((country): country is string => Boolean(country && typeof country === 'string' && country.trim())).map((country) => (
+                      <SelectItem key={country} value={country}>
+                        {country}
                       </SelectItem>
                     ))}
                   </SelectContent>

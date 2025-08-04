@@ -282,16 +282,16 @@ export function SchoolTargetsManager({
 
           {/* Category Filter */}
           <Select
-            value={filters.category?.[0] || ''}
-            onValueChange={(value) => 
-              handleFilterChange('category', value ? [value] : undefined)
+            value={filters.category?.[0] || 'all'}
+            onValueChange={(value) =>
+              handleFilterChange('category', value === 'all' ? undefined : [value])
             }
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
+              <SelectItem value="all">All Categories</SelectItem>
               <SelectItem value="safety">🛡️ Safety</SelectItem>
               <SelectItem value="target">🎯 Target</SelectItem>
               <SelectItem value="reach">🚀 Reach</SelectItem>
