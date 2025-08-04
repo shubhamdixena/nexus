@@ -1105,8 +1105,13 @@ function TargetUniversitiesFields({ form }: { form: any }) {
 
   useEffect(() => {
     loadUserData()
-    loadSchoolTargets()
   }, [])
+
+  useEffect(() => {
+    if (userId) {
+      loadSchoolTargets()
+    }
+  }, [userId])
 
   const loadUserData = async () => {
     try {
@@ -1121,6 +1126,8 @@ function TargetUniversitiesFields({ form }: { form: any }) {
   }
 
   const loadSchoolTargets = async () => {
+    if (!userId) return
+    
     try {
       setIsLoading(true)
       const response = await fetch('/api/school-targets')

@@ -23,7 +23,7 @@ import {
 const links = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Application Manager", href: "/applications", icon: ClipboardList },
-  { name: "AI Interview", href: "/ai-interview", icon: Brain },
+  { name: "AI Interview", href: "/ai-interview", icon: Brain, admin: true }, // Only show to admins
   { name: "Universities", href: "/universities", icon: GraduationCap },
   { name: "MBA Schools", href: "/mba-schools", icon: BookOpen },
   { name: "Scholarships", href: "/scholarships", icon: BarChart3 },

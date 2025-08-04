@@ -175,7 +175,10 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
   }
 
   const handleAddSchoolTarget = async () => {
-    if (!selectedSchool || !userId) return
+    if (!selectedSchool || !userId) {
+      console.error('Missing selectedSchool or userId')
+      return
+    }
 
     setSavingTarget(true)
 
@@ -193,31 +196,28 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
         }),
       })
 
-      if (response.ok) {
-        const responseData = await response.json()
+      const responseData = await response.json()
+
+      if (response.ok && responseData.target) {
+        // Update the local and parent state immediately to reflect changes
+        const updatedTargets = [...localTargets, responseData.target]
+        setLocalTargets(updatedTargets)
+        onChange(updatedTargets)
         
-        if (responseData.target) {
-          // Update the local and parent state immediately to reflect changes
-          const updatedTargets = [...localTargets, responseData.target]
-          setLocalTargets(updatedTargets)
-          onChange(updatedTargets)
-          
-          toast({
-            title: "School added! 🎉",
-            description: `${selectedSchool.name} has been added to your target schools.`,
-          })
-          
-          ActivityLogger.addTargetSchool(selectedSchool.name, priorityScore)
-          
-          // Reset state
-          setSelectedSchool(null)
-          setShowRoundPriorityDialog(false)
-          setApplicationRound("")
-          setPriorityScore(5)
-        }
+        toast({
+          title: "School added! 🎉",
+          description: `${selectedSchool.name} has been added to your target schools.`,
+        })
+        
+        ActivityLogger.addTargetSchool(selectedSchool.name, priorityScore)
+        
+        // Reset state only after successful addition
+        setSelectedSchool(null)
+        setShowRoundPriorityDialog(false)
+        setApplicationRound("")
+        setPriorityScore(5)
       } else {
-        const errorData = await response.json().catch(() => ({}))
-        
+        // Handle error responses properly
         if (response.status === 409) {
           toast({
             title: "School Already Added",
@@ -227,10 +227,11 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
         } else {
           toast({
             title: "Error Adding School",
-            description: errorData.error || "An error occurred. Please try again.",
+            description: responseData.error || `Server error: ${response.status}`,
             variant: "destructive",
           })
         }
+        console.error('Server error response:', responseData)
       }
     } catch (error) {
       console.error('Error adding school target:', error)
@@ -568,13 +569,13 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
                     // Check if this is an edit operation
                     const isEdit = selectedSchool?.id && localTargets.find(t => t.school_id === selectedSchool.id)
                     
                     if (isEdit) {
                       // Update existing school
-                      updateSchoolTarget(selectedSchool.id, {
+                      await updateSchoolTarget(selectedSchool.id, {
                         application_round: applicationRound,
                         priority_score: priorityScore
                       })
@@ -584,13 +585,15 @@ export function EnhancedSchoolSelector({ value, onChange, userId }: EnhancedScho
                         description: `${selectedSchool.name} has been updated.`,
                       })
                       
+                      // Reset state after successful update
                       setShowRoundPriorityDialog(false)
                       setSelectedSchool(null)
                       setApplicationRound("")
                       setPriorityScore(5)
                     } else {
                       // Add new school
-                      handleAddSchoolTarget()
+                      await handleAddSchoolTarget()
+                      // handleAddSchoolTarget manages its own state reset
                     }
                   }}
                   disabled={savingTarget}
