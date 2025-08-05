@@ -279,6 +279,11 @@ export function ModernProfile() {
         }
         return {};
       
+      case 'universities':
+        return {
+          schoolTargets: schoolTargets || []
+        };
+      
       default:
         return displayData;
     }
@@ -333,14 +338,21 @@ export function ModernProfile() {
               <tr className="bg-gray-100">
                 <th className="border border-gray-200 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">School</th>
                 <th className="border border-gray-200 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                <th className="border border-gray-200 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Round</th>
                 <th className="border border-gray-200 px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase w-16">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {schoolTargets.map((target, idx) => (
-                <tr key={target.id} className={idx % 2 === 1 ? 'bg-gray-50' : ''}>
-                  <td className="border border-gray-200 px-4 py-2 text-gray-700 text-sm">{target.school_name}</td>
-                  <td className="border border-gray-200 px-4 py-2 text-gray-700 text-sm text-center">{target.priority_score || 5}</td>
+              {schoolTargets.map((school, idx) => (
+                <tr key={school.id || idx} className={idx % 2 === 1 ? 'bg-gray-50' : ''}>
+                  <td className="border border-gray-200 px-4 py-2 text-gray-700 text-sm">
+                    <div>
+                      <div className="font-medium">{school.school_name}</div>
+                      <div className="text-xs text-gray-500">{school.location}</div>
+                    </div>
+                  </td>
+                  <td className="border border-gray-200 px-4 py-2 text-gray-700 text-sm">{school.priority_score}/10</td>
+                  <td className="border border-gray-200 px-4 py-2 text-gray-700 text-sm">{school.application_round || 'Not set'}</td>
                   <td className="border border-gray-200 px-4 py-2 text-center">
                     <Dialog>
                       <DialogTrigger asChild>
@@ -348,26 +360,16 @@ export function ModernProfile() {
                           <Edit className="w-3 h-3" />
                         </button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-3xl max-h-[70vh] overflow-y-auto">
+                      <DialogContent className="max-w-lg">
                         <DialogHeader>
-                          <DialogTitle>Edit Target Schools</DialogTitle>
+                          <DialogTitle>Edit Target School</DialogTitle>
                           <DialogDescription>
-                            Update your target universities and programs
+                            Update your target school details
                           </DialogDescription>
                         </DialogHeader>
                         <CompactProfileEditForm 
                           section="universities" 
-                          data={{ 
-                            schoolTargets: schoolTargets.map(target => ({
-                              id: target.id,
-                              school_id: target.id,
-                              school_name: target.school_name,
-                              location: target.location || 'Unknown',
-                              ranking_tier: 'target',
-                              priority_score: target.priority_score || 5,
-                              application_round: target.application_round
-                            }))
-                          }}
+                          data={convertToFormData('universities', school, rawProfileData)}
                           onSave={handleFormSave}
                         />
                       </DialogContent>
@@ -385,19 +387,19 @@ export function ModernProfile() {
         <Dialog>
           <DialogTrigger asChild>
             <button className="mt-4 flex items-center text-blue-600 text-xs font-medium hover:underline">
-              <Plus className="w-3 h-3 mr-1" /> Add School
+              <Plus className="w-3 h-3 mr-1" /> Add Target School
             </button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[70vh] overflow-y-auto">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Add Target Schools</DialogTitle>
+              <DialogTitle>Add Target School</DialogTitle>
               <DialogDescription>
-                Select your target universities and programs
+                Add a school to your target list
               </DialogDescription>
             </DialogHeader>
             <CompactProfileEditForm 
               section="universities" 
-              data={{ schoolTargets: [] }}
+              data={{}}
               onSave={handleFormSave}
             />
           </DialogContent>

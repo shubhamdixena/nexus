@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Loader2, Save, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { ModernSchoolSelector } from "@/components/school-targets/modern-school-selector"
+import { SchoolSearch } from "@/components/school-targets/school-search"
 import { createClient } from "@/lib/supabase/client"
 
 // Compact schemas for form validation
@@ -264,35 +264,25 @@ export function CompactProfileEditForm({ section, data, onSave, onDataChange }: 
 
   // Special handling for universities section
   if (section === 'universities') {
-    const handleSchoolTargetsChange = (updatedTargets: any[]) => {
-      // The school selector has already saved the data to the database
-      // Use onDataChange for intermediate updates that shouldn't close the dialog
-      if (onDataChange) {
-        onDataChange(updatedTargets)
-      }
-      toast({
-        title: "Schools updated",
-        description: "Your target schools have been saved successfully.",
-      })
-    };
-
     return (
       <div className="space-y-4">
-        <ModernSchoolSelector
-          value={data.schoolTargets || []}
-          onChange={handleSchoolTargetsChange}
-          userId={userId}
+        <SchoolSearch
+          existingSchoolIds={data.schoolTargets?.map((school: any) => school.school_id) || []}
+          onSchoolAdded={() => {
+            toast({
+              title: "School added",
+              description: "Your target school has been added successfully.",
+            })
+            onSave([]) // Refresh the parent component
+          }}
         />
         <p className="text-sm text-muted-foreground mt-2">
-          Changes to your target schools are saved automatically. You can continue making changes and close this dialog when you're done.
+          Add schools to your target list. Changes are saved automatically.
         </p>
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button 
             type="button" 
-            onClick={() => {
-              // Trigger final refresh and close dialog
-              onSave(data.schoolTargets || [])
-            }}
+            onClick={() => onSave([])}
           >
             Done
           </Button>

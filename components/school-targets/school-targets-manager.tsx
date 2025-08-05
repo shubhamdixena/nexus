@@ -204,67 +204,7 @@ export function SchoolTargetsManager({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Stats */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <School className="h-6 w-6" />
-            Your Target Schools
-          </h3>
-          <p className="text-muted-foreground">
-            Manage your MBA application targets and track deadlines
-          </p>
-        </div>
-        <Badge variant="outline" className="text-lg px-3 py-1">
-          {targets.length} / {maxTargets} schools
-        </Badge>
-      </div>
-
-      {/* Stats Cards */}
-      {showStats && targets.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium">Target Schools</p>
-                <p className="text-2xl font-bold">{stats.byCategory.target}</p>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <div>
-                <p className="text-sm font-medium">Avg Priority</p>
-                <p className="text-2xl font-bold">{stats.avgPriority}/10</p>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-600" />
-              <div>
-                <p className="text-sm font-medium">Top 25</p>
-                <p className="text-2xl font-bold">{stats.byRanking['top-25']}</p>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-orange-600" />
-              <div>
-                <p className="text-sm font-medium">Due Soon</p>
-                <p className="text-2xl font-bold">{stats.upcomingDeadlines}</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+    <div className="space-y-4">
 
       {/* Filters and Search */}
       {targets.length > 0 && (
@@ -279,24 +219,6 @@ export function SchoolTargetsManager({
               className="pl-10"
             />
           </div>
-
-          {/* Category Filter */}
-          <Select
-            value={filters.category?.[0] || 'all'}
-            onValueChange={(value) =>
-              handleFilterChange('category', value === 'all' ? undefined : [value])
-            }
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="safety">🛡️ Safety</SelectItem>
-              <SelectItem value="target">🎯 Target</SelectItem>
-              <SelectItem value="reach">🚀 Reach</SelectItem>
-            </SelectContent>
-          </Select>
 
           {/* Sort */}
           <Select
@@ -323,11 +245,11 @@ export function SchoolTargetsManager({
 
       {/* School Targets Grid or Empty State */}
       {targets.length === 0 ? (
-        <Card className="p-12 text-center bg-gray-50 dark:bg-gray-900 border-2 border-dashed">
-          <School className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-          <h4 className="text-xl font-semibold mb-2">No schools selected yet</h4>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Start building your target school list to get personalized recommendations and track application deadlines.
+        <Card className="p-8 text-center border-dashed">
+          <School className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+          <h4 className="text-lg font-medium mb-2">No schools selected yet</h4>
+          <p className="text-muted-foreground mb-4 text-sm">
+            Start building your target school list to track application deadlines.
           </p>
           {!readonly && (
             <SchoolSearch
@@ -339,7 +261,7 @@ export function SchoolTargetsManager({
       ) : (
         <>
           {/* Schools Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredAndSortedTargets.map((target: SchoolTarget) => (
               <SchoolTargetCard
                 key={target.id}
@@ -347,7 +269,7 @@ export function SchoolTargetsManager({
                 onEdit={handleTargetUpdated}
                 onDelete={handleTargetDeleted}
                 readonly={readonly}
-                showApplicationStatus={true}
+                showApplicationStatus={false}
               />
             ))}
           </div>
@@ -358,16 +280,6 @@ export function SchoolTargetsManager({
               existingSchoolIds={existingSchoolIds}
               onSchoolAdded={handleSchoolAdded}
             />
-          )}
-
-          {/* Max Targets Warning */}
-          {targets.length >= maxTargets && (
-            <Card className="p-4 bg-yellow-50 border-yellow-200">
-              <p className="text-sm text-yellow-800">
-                <strong>Maximum targets reached.</strong> You can have up to {maxTargets} target schools. 
-                Remove some targets to add new ones.
-              </p>
-            </Card>
           )}
         </>
       )}

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useState, useEffect } from "react"
+import { useBookmarks } from "@/hooks/use-bookmarks"
 
 interface ScholarshipData {
   id: string
@@ -34,13 +35,13 @@ interface ScholarshipData {
 export default function ScholarshipDetailsPage() {
   const params = useParams()
   const router = useRouter()
-  const [isSaved, setIsSaved] = useState(false)
   const [scholarship, setScholarship] = useState<ScholarshipData | null>(null)
   const [similarScholarships, setSimilarScholarships] = useState<ScholarshipData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const scholarshipId = params.id as string
+  const { isBookmarked, toggleBookmark } = useBookmarks('scholarship')
 
   useEffect(() => {
     const fetchScholarship = async () => {
@@ -182,10 +183,10 @@ export default function ScholarshipDetailsPage() {
                     variant="ghost"
                     size="icon"
                     className="rounded-full h-8 w-8"
-                    onClick={() => setIsSaved(!isSaved)}
+                    onClick={() => toggleBookmark(scholarshipId)}
                   >
-                    {isSaved ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <Bookmark className="h-4 w-4" />}
-                    <span className="sr-only">{isSaved ? "Remove from saved" : "Save scholarship"}</span>
+                    {isBookmarked(scholarshipId) ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <Bookmark className="h-4 w-4" />}
+                    <span className="sr-only">{isBookmarked(scholarshipId) ? "Remove from saved" : "Save scholarship"}</span>
                   </Button>
                 </div>
               </CardHeader>

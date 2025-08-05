@@ -442,6 +442,29 @@ export class MBASchoolRealtimeService {
     }
   }
 
+  static async getMBASchoolById(id: string): Promise<MBASchool | null> {
+    try {
+      const { data, error } = await supabase
+        .from('mba_schools')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null // No data found
+        }
+        console.error('Error fetching MBA school by ID:', error)
+        throw new Error(`Database error: ${error.message}`)
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error fetching MBA school by ID:', error)
+      return null
+    }
+  }
+
   static subscribeToMBASchools(callback: (schools: MBASchool[]) => void) {
     const client = createClient()
     const subscription = client

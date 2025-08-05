@@ -74,6 +74,26 @@ interface MBASchool {
   core_curriculum?: string
   credits_required?: string
   key_features?: string
+  top_hiring_companies_array?: string[]
+  alumni_data?: AlumniData[]
+  description?: string
+  type?: string
+  specializations?: string[]
+  R1?: string
+  R2?: string
+  R3?: string
+  R4?: string
+  R5?: string
+  r4_deadline?: string
+  r5_deadline?: string
+  total_cost?: string
+  weighted_salary?: string
+  gmat_gre_waiver_available?: boolean
+  admissions_rounds?: string
+  mean_gmat?: number
+  mean_gpa?: string
+  international_percentage?: number
+  women_percentage?: number
 }
 
 const formatCurrency = (value: string | null | undefined) => {

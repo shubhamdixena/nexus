@@ -46,7 +46,7 @@ function ModernSchoolSelectorInner({
       maxTargets={maxTargets}
       allowedCategories={allowedCategories}
       readonly={readonly}
-      showStats={true}
+      showStats={false}
     />
   )
 }
